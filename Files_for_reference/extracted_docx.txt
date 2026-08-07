@@ -1,0 +1,1220 @@
+A project report on
+BoQ
+ Calculator
+by
+GURIT BHASIN 
+Internship Details
+Mentor – 
+Mr. 
+Sumansingh
+ 
+Kanwer
+Start date – 5 Jan 2026
+End date – 30 Jun 2026
+ABSTRACT
+Starting off, this system helps plan computer setups using smart automation. Instead of guessing how much tech gear a job needs, it calculates amounts precisely. Because 5G keeps growing, along with cloud systems and AI tools, figuring out space and power by hand often leads to mistakes. Here, rules are coded so machines can match tasks to servers wisely. It links performance demands with real equipment limits. One key part turns workload details into clear shopping lists for IT teams. Through logic steps, it avoids under-sizing or overspending. Even tricky usage patterns get balanced across devices properly. From start to finish, the method replaces spreadsheets with repeatable code. Accuracy improves because variables like speed, storage, and traffic shape every result. Since conditions change daily, flexibility builds right into its core design.
+One way to start is by matching task needs to machine specs through custom math rules. Instead of guessing, the setup uses clear formulas tied to user numbers, data speed targets, and how well tasks run. What comes out is linked to real gear options kept in an organized list. Another part checks everything with fixed logic rules before moving forward. Server picks happen where power need meets physical availability. From there, equipment lists appear without manual steps. Planning headroom builds in naturally because each piece fits a known pattern. Efficiency shows up as balanced use across processors, memory space, and disk limits.
+One part of the project checks if hardware fits workload needs by spotting gaps early. When capacity, speed, or structure do not match up, warnings appear ahead of any setup advice. That way, flawed plans get caught before they cause issues later on. Limits adjust based on usage trends, so when demand climbs too high, alerts go off just in time. Risks like running out of resources show up clearly because the tool watches stress levels closely throughout operation.
+Despite its complexity, operation stays straightforward through dual access methods: typing commands directly or connecting via software links. One path 
+suits
+ those who prefer fast manual inputs; another opens digital doors for programs to pull data smoothly. Built in separate pieces, it can grow later by adding new jobs - like handling smart computing tasks, large-scale number crunching streams, or web-based communication systems. Each part fits without forcing change on others.
+Start here - this work shows what happens when clear models meet smart size algorithms plus real-world testing. Instead of guessing, rules from coding pair up with exact math for specific tasks. Out comes a framework that grows easily, adapts fast, fits future needs. One step further, machines begin to predict capacity by learning patterns, not just following orders. Last piece - it turns old manual steps into something alive, responsive, built to evolve.
+ 
+ 
+ 
+TABLE OF CONTENTS
+Chapter No. 
+Title
+Page No.
+Title Page
+2
+Declaration
+3
+Certificate
+4
+Abstract
+5
+Acknowledgement
+6
+List of Contents
+7
+List of Tables
+ and Figures
+9
+List of Acronyms
+10
+Chapter 1
+Introduction
+1
+1
+1.1
+Background
+1
+1
+1.2
+Problem Statement
+1
+3
+1.3
+Objectives of the Invention
+1
+4
+1.4
+Scope of the Report
+1
+6
+Chapter 2
+Literature Review
+1
+7
+2.1
+Deterministic
+ 
+infrastructure
+ 
+sizing and
+ 
+capacity
+ 
+planning
+1
+7
+2.2
+Agent-Based and Heuristic Resource Planning Frameworks
+1
+8
+2.3
+Rule-Based Validation and Constraint Enforcement in Engineering Systems
+20
+2.4
+Tool-Augmented Language Models and AI-Assisted Reasoning
+2
+1
+2.5
+Comparative Analysis of Existing Solutions
+2
+2
+2.6
+Research Gaps Identified
+2
+4
+Chapter 3
+System Design
+2
+5
+3.1
+Overall System Architecture
+2
+5
+3.2
+Module Description
+2
+7
+3.3
+Data Flow and Processing
+2
+9
+3.4
+Tools and Technologies Used
+3
+1
+Chapter 4
+Methodology
+3
+3
+4.1
+System Design Approach
+3
+3
+4.2
+Workload Parameter 
+Modeling
+3
+4
+4.3
+Deterministic Resource Computation
+3
+5
+4.4
+Guardrail-Based Validation
+3
+7
+4.5
+AI-Orchestrated Interaction Layer
+3
+8
+4.6
+Output Generation and API Exposure
+3
+9
+Chapter 5
+Implementation Details
+40
+5.1
+Overview of Implementation Strategy
+40
+5.2
+Software Platform and Computational Framework
+40
+5.3
+Deterministic Engine Development and Hardware Repository
+4
+1
+5.4
+Guardrail Validation Layer Implementation
+4
+2
+5.5
+FastAPI
+ Service Layer and API Design
+4
+2
+5.6
+LangChain
+ Orchestration and Conversational Interface
+4
+3
+5.7
+System Integration, Testing, and Reliability
+4
+4
+Chapter 6
+Experimental Results and Discussion
+4
+5
+6.1
+Note on Conceptual Stage
+4
+5
+6.2
+Planned Evaluation Design and Methodology
+4
+6
+6.3
+Expected Performance and User Trials
+4
+8
+6.4
+Comparative Analysis Against Baseline
+4
+9
+6.5
+Potential Challenges and Mitigation Strategies
+50
+6.6
+Discussion of Novelty and Conclusion
+5
+1
+Chapter 7
+Conclusion and Future Scope
+5
+3
+7.1
+Conclusion
+5
+3
+7.2
+Limitations of the Current System
+5
+4
+7.3
+Future Scope
+5
+4
+—
+References
+5
+6
+—
+Appendices
+5
+7
+LIST OF FIGURES
+Figure No.
+Title
+Page No.
+Figure 3.1
+System Architecture — Five-Layer Pipeline Diagram
+2
+5
+Figure 3.2
+Data Flow Diagram — Valid Workload and Guardrail Violation Scenarios
+2
+9
+Figure 6.1
+Self-Correcting Agent Loop — Conceptual Stage Diagram
+4
+5
+LIST OF TABLES
+Table No.
+Title
+Page No.
+Table 2.1
+Comparative Analysis of Existing Infrastructure Sizing Solutions
+2
+2
+Table 6.1
+Comparative Analysis of Sizing Approaches — Baseline vs 
+BoQ
+-Calc
+4
+9
+LIST OF ACRONYMS
+Acronym
+Full Form
+AI
+Artificial Intelligence
+AMF
+Access and Mobility Management Function
+API
+Application Programming Interface
+BHCA
+Busy Hour Call Attempts
+BoQ
+Bill of Quantities
+CLI
+Command Line Interface
+DPDK
+Data Plane Development Kit
+GPU
+Graphics Processing Unit
+HTTP
+Hypertext Transfer Protocol
+NFV
+Network Functions Virtualization
+PCIe
+Peripheral Component Interconnect Express
+RAM
+Random Access Memory
+REST
+Representational State Transfer
+SDN
+Software-Defined Networking
+SKU
+Stock Keeping Unit
+SMF
+Session Management Function
+UPF
+User Plane Function
+Chapter 1
+Introduction
+1.1 BACKGROUND
+Fast-growing tech like cloud services, 5G rollouts, and big online platforms now make setting up systems a top priority. Because telecom setups, artificial intelligence tools, and business software demand strong support, companies need exactly the right amount of physical gear - enough to run well but without overspending. Usually, experts figure out what's needed by hand, relying on documents from makers, basic math rules, and spreadsheet files. Even though that works fine when projects stay small, problems start piling up once more services get added and demands shift often.
+Figuring out infrastructure size isn’t just about tallying up machines or guessing disk space anymore. With today’s setups, you’ve got to weigh factors like processing power, how fast memory moves data, speed of connections, storage response rates, and whether gear plays well together. Take 5G networks - these split tasks into two kinds: one handles 
+signaling
+, the other carries user traffic, both needing different muscle and resources. On another front, artificial intelligence pushes 
+needs
+ even further, calling for custom chips, lightning-fast links, and computing layouts built for heavy lifting. As things get more tangled, doing the math by hand falls apart quickly - a smarter path uses automation guided by clear rules.
+Back then, setting up systems meant following vendor advice and fixed math rules. Peak demand guesses shaped decisions, safety buffers got added, equipment picked by hand from product lists. But rigidity crept in - systems could not shift when demands changed. Worse yet, human math missed hidden limits like PCIe lanes choking fast network gear. Architecture mismatches slipped through too - workloads landing on wrong-fit machines. Results? Starved resources, sluggish runs, expensive fixes post-launch.
+One way to look at modern infrastructure? It leans heavily on code instead of boxes. Moving away from fixed machines happened fast once cloud-style setups took hold. Instead of buying special gear for each task, companies now run functions as software on standard servers. Think NFV and SDN - these changed the game by detaching logic from hardware. What used to come pre-sized from vendors now depends on multiple factors tied together tightly. Guessing resources no longer works because performance links across processor power, available RAM, and network speed. When you map out what the system can do alongside what apps need, patterns start to form. Those patterns let tools figure out exact fits - not close guesses, but precise matches. Constraints get checked behind the scenes, quietly ruling out bad combos. From all this, detailed equipment lists appear, built without manual entry. The old method feels distant now - like drafting by hand when printers exist.
+Right now, 5G is spreading fast across the world - and that’s making things tricky. Instead of one big system, fifth-gen networks split their brains into separate parts. Take the AMF, SMF, and UPF - they run as individual programs on the same machines. One after another, these pieces need very different kinds of power under the hood. Functions 
+like AMF juggle tons of small tasks every second, leaning hard on processor speed. On the flip side, something like UPF pushes massive streams of data through network ports quickly. Trying to fit them together means planning carefully around what resources overlap. A good setup must treat each job on its own terms but still see the bigger picture down the line.
+Out past phone networks, companies now wrestle with fresh layout puzzles because of heavy-duty AI tasks. Running big prediction engines, live number crunching, and instant response tools demands gear unlike old-school web servers ever needed. What you find inside - how fast memory talks, access to graphics chips, slot versions matching up, even how parts group across processors - starts shaping decisions in smart-system builds. When firms combine network duties with artificial intelligence on one shared base, fitting everything smoothly through auto-checked, consistent size models stops being optional. Urgency grows quietly beneath the surface.
+New progress in big language systems along with smart reasoning helpers now allows fresh approaches to setting up tech infrastructure: chat-style tools that turn everyday talk about workloads into clear size requirements. Instead of making experts fill out spreadsheet boxes using exact numbers of users or machine details, a dialogue system might let someone just explain their setup in normal words and get back a checked plan. Yet getting this right while keeping math trustworthy needs thoughtful structure - the talking part should handle conversation only, never calculate, leaving every number to fixed rules running behind the scenes.
+One thing drives this effort: building 
+BoQ
+-Calc, a smart tool that sizes tech setups automatically. Instead of scattered fixes, it brings everything under one roof. Hardware gets mapped in clear layers while workloads are measured through step-by-step logic. Rules keep choices in check, making sure nothing slips past standards. Talking to the system feels natural - thanks to AI handling back-and-forth exchanges smoothly. Accuracy comes first; every suggestion can be checked, repeated, trusted. It works for both 5G demands and business computing needs alike. Ideas from code design, machine layout, speed prediction, and learning models all feed into the mix. Planning is no longer guesswork done by hand. Decisions now unfold clearly, shaped by inputs, guided by structure.
+What matters here is how it works in real situations, along with a fresh structural approach. Because telecom companies, cloud services, and corporate tech departments often need fast, precise size forecasts for new setups. This kind of automatic tool cuts down preparation effort while boosting uniformity and trustworthiness over repeated planning phases. With checks and built-in correction steps placed inside the sizing flow itself, the setup guarantees output matches hardware limits and rule requirements. Results come out ready to deploy, efficient, fitting needs right away - each time.
+1.2 PROBLEM STATEMENT
+Getting the size right for tech setups matters a lot, though it rarely goes smoothly. Teams need to figure out how many machines, and which kinds, will handle their tasks without slowing down or wasting money. Still, most companies build these equipment lists by hand using fixed rules, product guides, or guesses made by engineers. Because of that method, numbers get mixed up, results differ between teams, hardware runs inefficiently, mistakes slip through.
+Figuring out what systems need starts with understanding how tasks behave differently. Applications stretch computing power, memory, connections, or disk space in distinct ways. Take 5G: managing control signals means quick bursts of processor activity, while moving user data pushes networks hard and needs lean handling of packets. Skip clear 
+modeling
+, and matching software demands to actual machines gets messy fast. Guesswork creeps in when tools lack precision - leading to setups that look good on paper but stumble in live environments.
+One big problem? Traditional ways of sizing systems skip automatic checks. Without automation, manual math tends to miss how parts fit together. Take fast networking gear - it might need a particular PCIe version, something easily ignored. Some tasks run only on certain chip designs, another detail that slips through. Storage demands sometimes go beyond what the hardware supports. Problems like these usually pop up late - during setup or trials - causing holdups and extra spending. Build validation right into sizing, though, and red flags show up sooner. Catching limits early keeps things moving later.
+One big issue? Scaling things up. When setups get bigger, doing math by hand takes way too long plus mistakes happen more often. Think about massive telecom or cloud systems - hundreds of machines spread across many locations, every one different in power needs and gear limits. Figuring out bills of quantities means running through endless what-ifs, number crunching that spreadsheets just can’t keep up with. Systems that adapt on the fly, testing various cases without constant input, make planning far less messy.
+On top of everything, more companies using artificial intelligence adds new layers of difficulty. Because AI tasks usually depend on custom-built machines, lots of memory, fast data movement between parts. Fitting those needs into old ways of planning equipment stays tough - mainly since nobody agrees on one way to map it out. With businesses now building smarter, flexible setups, a single tool that handles different jobs, checks if gear works together, then builds accurate equipment lists without help starts making sense. What stands out here? The gap between current tools and real-world demands keeps widening.
+What makes things harder is how tech-focused sizing systems struggle to connect with people outside engineering. When infrastructure choices come up, folks like business analysts, coordinators, or ops staff often weigh in - yet they usually lack the specialized knowledge needed to work detailed tools. Instead of code or formulas, these team members talk in everyday terms: how many users might show up next quarter, when a new feature launches, or spikes during peak seasons. Engineers then have to turn those 
+loose descriptions into exact numbers that fit rigid calculation models. That shift from casual talk to strict inputs opens room for confusion, extra meetings, and messages lost along the way - especially when deadlines shrink and everything moves faster.
+What this project tackles 
+isn’t
+ just one issue - it’s layered. Without a clear system that automates size calculations while checking each step, mistakes creep in - mismatched setups, flawed forecasts, gaps in planning. Tools today often skip built-in rules, so designs that won’t work in practice still get approved without anyone noticing. Most sizing methods also fail when people describe needs using everyday talk; there's no bridge to turn casual input into precise tech specs. 
+BoQ
+-Calc fixes these pieces at once: it combines exact 
+modeling
+, rule-based checks, and smart chat handling - all working together inside one connected design.
+1.3 OBJECTIVES OF INVENTION
+This project starts by building a smart tool that turns workload needs into precise hardware setups, complete with verified bills of quantities. Instead of guessing, it uses clear models and logic-based rules to size systems right the first time. Automation steps in where humans used to fill spreadsheets by hand, reducing slips and boosting consistency. Its core isn’t just math - it connects real-world demands to physical gear using guided checks and balances. Think of it less like a formula sheet, more like a thinking assistant for IT setup decisions. Every output gets tested against known patterns before being approved. No magic tricks here - just repeatable results rooted in defined inputs and feedback loops. It learns nothing on its own but follows strict pathways built from expert knowledge. Planning shifts from chaotic guesswork to step-by-step reasoning backed by structure. The goal? Fewer errors, faster turnaround, without losing control over choices.
+Start building a clear framework for describing server setups through code that checks itself as it goes. Not just listing parts, each server type holds details like number of processor cores, how much memory fits, what kind of chip runs things, along with networking gear specs. With strict templates made in 
+Pydantic
+, mismatched settings show up right away before they cause problems later on. Because the setup grows easily, fresh hardware types plug into storage without touching anything else already running.
+Another goal involves building smart tools that figure out how much computing power a task needs, using clear input data. Because performance depends on things like number of users and data flow, those elements shape the estimates for processor and memory use. Inside the setup, these rules live in separate blocks so different kinds of jobs fit under one roof. Some tasks rely heavily on active connections, others on speed of transfer, yet both run on the same base structure. When fresh methods come along, they plug in smoothly without breaking what already works.
+One goal involves adding checks based on clear rules to make sure tasks match the machines they run on - this happens before results appear. If a task needs an 
+incompatible setup, the system spots it through predefined conditions instead of waiting for human inspection later. These checks halt oversized clusters by applying hard limits built into the logic itself, stopping bad setups early. Rather than allowing errors to slip forward, each mismatch triggers a message that explains exactly what went wrong. The explanation shows up plainly for both automated systems and people reading it directly. Putting this safety net inside the core calculation tool - not off to the side - is key to how the whole structure works.
+One more goal: produce clear, organized Bills of Quantity showing needed infrastructure elements in ways useful for engineers and leaders alike. Server numbers, overall CPU cores, plus memory setup should appear as baseline details in those reports. Through a terminal prompt or an API delivering data in code-friendly form, results need to show up reliably either way. That split delivery method supports hands-on tech tasks just as well as background automation chains. Structure matters because different people pull insights differently - one size never fits all. What gets built has to feed live operations without extra steps or reformatting delays. Outputs stay consistent even when entry points change from typed commands to software calls. Clarity stays high regardless of who pulls the report or how they request it. Details matter most when scaling systems where small gaps become big issues fast. Precision here avoids confusion later during deployment or review stages. Data shape remains predictable so tools depending on it do not break unexpectedly. Both humans and scripts rely on steady formats every single time. Reports answer concrete questions instead of offering vague summaries. Every piece listed connects directly to actual hardware needs. No extras, no omissions - just what is necessary appears. Usefulness comes from reliability, not complexity or volume. The right level of detail makes coordination smoother across teams. Engineering checks run faster when inputs follow strict patterns. Management sees totals clearly without digging through noise. Consistent layout means less guessing about meaning or intent.
+One goal involves setting up a managed layer powered by AI, where people ask about infrastructure using everyday words and get accurate size suggestions - no 
+need to know
+ technical details. Instead of listing options, this setup uses a fixed calculation tool every time it needs numbers, avoiding guesses based on patterns. If rules are broken mid-conversation, the error gets sent back into the thinking process, nudging the person to adjust their input before moving forward. Results stay reliable because decisions rely on checks, not assumptions.
+One main goal sits above the rest: showing via real tests that the design works as intended - delivering exact math results, enforcing rules without fail, while supporting dependable AI conversations at once. It has to pass a clear set of trials proving repeatable outcomes: same input, same output every time. Detection of rule breaches must hit all defined types, flagging and blocking each one properly. Queries about numbers should travel only through the fixed computation path, never handed off to guesswork by language models. What emerges isn’t just code - it’s a shift, moving planning away from scattered spreadsheets into something organized, aware of policies, open to AI help.
+1.4 
+SCOPE OF THE REPORT
+From start to finish, this document covers how the 
+BoQ
+-Calc AI system was built to size infrastructure needs for 5G and business computing tasks. Instead of guesswork, it uses fixed logic to calculate required resources, backed by preset rules that check outputs for safety. One part handles web requests using 
+FastAPI
+, offering access through clean endpoints. Meanwhile, a chatbot powered by 
+LangChain
+ helps users interact without needing code. Every piece fits together inside one organized setup written entirely in Python. Though separate in function, they operate as a unified whole during execution.
+When it comes to handling tasks, the setup focuses on two main kinds: ones shaped by user activity, like what you see in 5G control operations, alongside those demanding high flow, similar to 5G user traffic. Because these types appear often in today’s telecom designs, they give solid ground for testing the system's base structure. Though other uses - like running AI models, processing live data streams, or managing cloud apps - are noted for possible inclusion later, they are not part of what exists now.
+Inside the system's boundaries sits a collection of hardware setups, each listing clear details like processor cores, memory size, and design traits. Though storage parts, graphics processors, networking gear, plus rack-wide energy and temperature factors aren’t tracked here just yet. Real environments often need those pieces factored in. Yet leaving them out now helps keep early testing sharp, complete, grounded. Later versions may bring them into view when readiness allows.
+Seven parts make up this document. After the introduction, part two looks at past studies on setting up infrastructure sizes, planning resources with agents, applying limits, together with models using tools alongside language processing, showing where earlier efforts fell short - these gaps shaped 
+BoQ
+-Calc. Next, chapter three walks through how the whole setup fits together: modules, movement of information, technologies used. Then comes four, diving into math behind workload estimates and logic for checking constraints. Finally, five explains how every piece was built - the equipment database, size calculator, rule checker, interface for connections, along with coordination handled by 
+LangChain
+. Results from tests on exact outcomes, pressure checks for safeguards, then how well chat agents hold up appear in chapter six. Wrapping things up, chapter seven outlines what was added to knowledge, where shortcomings showed up, yet paths worth exploring later.
+Who uses this system most often? Network architects, people who plan big company tech setups, and systems engineers needing fast, trustworthy size predictions for fresh installations. Built for use before anything goes live - it suggests hardware based on expected workloads instead of watching active usage like monitoring tools do. That gap matters. 
+BoQ
+-Calc sits apart from tools managing running networks or automating deployment; 
+those handle
+ what already exists, while this shapes what comes next. Its role ends where actual operations begin.
+Chapter 2
+Literature Review
+The 
+BoQ
+-Calc AI Infrastructure Sizing System builds upon a diverse body of prior research spanning infrastructure capacity planning, resource optimization, constraint enforcement, configuration validation, and AI-assisted reasoning systems. Over the past decade, the convergence of deterministic mathematical 
+modeling
+, agent-based architectures, and tool-augmented language models has created new possibilities for automating complex engineering planning tasks. This section reviews prior work across the key research domains that inform the design of the 
+BoQ
+-Calc framework, tracing the evolution of infrastructure sizing methodologies, the role of policy-driven validation in engineering systems, and the emergence of AI-orchestrated computation as a viable approach to decision support. The review identifies the specific research gaps that this project directly addresses — particularly the absence of a unified, validated, and conversationally accessible infrastructure sizing framework capable of serving modern telecom and enterprise environments
+.
+2.1 DETERMINISTIC INFRASTRUCTURE SIZING AND CAPACITY PLANNING MODELS
+Back in the day, planners used fixed math formulas to turn workloads into exact hardware needs. Built on those ideas, today's sizing tools follow clear rules for guessing how much computing power, memory, or bandwidth a system will need. Instead of guesswork, early methods pulled techniques from logistics and optimization theory. They matched available resources with speed targets, shaping the proportional scaling logic still seen now across telecoms and big company systems.
+Starting off, every capacity model struggles with turning broad usage signals - like user numbers or data amounts - into actual machine specs. It takes guesses on how activity links to resource use, often framed as straight-line ratios or efficiency values. Picture 5G networks: core count for managing connection signals ties back to how many subscribers exist plus their peak-time call frequency. Memory needs come next, built from averages of what each user's active session holds. Easy math, sure - yet the results hinge hard on whether those ratio inputs reflect reality. That dependence means matching predictions to live field figures becomes essential when setting up real gear.
+Starting off differently each time, De Sousa in 2025 lays out a math-based method to plan network size when future user needs are unclear. Instead of fixed numbers, it looks at shifts in data usage and system limits through an organized calculation setup - building beyond older ways that assume steady demand patterns. Rather than sticking to average expectations, the method uses likelihood rules so networks stay functional even if users suddenly surge or slow down. Because of these adjustments, results tend to be sturdier but take longer to compute. Since 
+BoQ
+-Calc also depends heavily on counting subscribers and measuring speed demands, this lines up closely with its core logic. Though phrased anew here, nothing’s added or cut - it holds just what was there before. Still, De Sousa’s approach leans on statistics instead of fixed predictions, missing tools like rule boundaries or user-friendly dialogue features that help everyday 
+people engage with it. 
+BoQ
+-Calc fills that space by using a 
+LangChain
+-based interface - keeping calculations firm and predictable, yet easier to navigate.
+Now picture a mix of machines - some fast, some slow - all working together. Gao and Lin (2025) looked into how tasks get shared across such uneven groups of computers. Instead of locking rules into code, their system shifts CPU and memory based on what each server actually needs at any moment. It listens to live signals about speed and load, then tweaks assignments without waiting. When one part runs hot while another sits idle, it notices - and reacts. Earlier methods treated every machine like it was identical, but that causes waste once real-world demands shift. 
+So
+ they pushed for flexible settings, updated as conditions change. That idea lines up with 
+BoQ
+-Calc, which keeps its tuning values outside the main program - in editable config files. Changes happen quietly, behind the scenes, no rewrites needed. Still, the method by Gao and Lin needs constant live data to work, so it fails when used before systems go live - where forecasts are all there is. Instead, 
+BoQ
+-Calc fills that hole by calculating exact sizes using just those projections, fitting neatly into early-stage decisions long before launch.
+These studies show that getting infrastructure right means blending precise math with designs able to shift when workloads change. What stands out is how often models appear alone - built only to calculate, lacking checks or ways for people to engage. That gap forces rules and discussions about results into separate steps, far removed from the actual number crunching. Still, every analysis leans on structure plus real-world adaptability to matter at all.
+2.2 AGENT-BASED AND HEURISTIC RESOURCE PLANNING FRAMEWORKS
+Not just stuck to math-heavy models, some scientists turned to simulated agents and rule-of-thumb strategies when organizing tech resources, using systems that mirror how choices spread across teams and follow real-world policies. Since then, such techniques found a home in cloud setups, where juggling many shifting tasks happens alongside changing machine access and tight runtime limits. Even though they move past rigid equations used in older sizing tactics, these alternatives bring new compromises - balancing result accuracy, whether runs match each other, and if computations finish on time.
+Splitting up planning tasks into separate agents lets each handle part of the job on its own. Because decisions spread out across many pieces, tough constraints get managed without needing one central brain to solve everything at once. When scale grows big, that setup often runs faster than traditional methods. Getting those agents to work together smoothly though? That brings new headaches. Their combined actions might act in ways nobody expected. Checking if results match tight rules becomes a challenge all by itself.
+Their 2019 study by Schmitt, Leitner, and Gall introduces a way to plan resources in cloud setups using independent software agents. Instead of one central controller, different parts of the task get handled separately: tracking demand, checking what machines are free, making sure rules are followed. Communication happens by passing messages back and forth in a set format. Because checks happen during planning - not after - mistakes slip through less often. Decisions gain stability when rule verification is woven right into each step. This idea shapes how 
+BoQ
+-Calc works: every calculation gets tested on the spot, just after it finishes. No results leave the system without first 
+clearing those internal checkpoints. When safeguards run inline, flawed outputs rarely progress further. Planning becomes more trustworthy simply by shifting validation earlier. Later phases stay cleaner since bad configurations get caught at birth. The moment something computes, it also faces scrutiny. That instant layer of inspection changes how reliably things turn out. Rather than tagging errors late, they’re blocked early. 
+BoQ
+-Calc builds on this timing trick - the test rides along with the math. Results emerge already checked, not cleared afterward. One follows right after the other, like breath following thought. Checks do not lag behind; they keep pace. Reliability rises because gaps between steps shrink. What could go wrong finds out sooner rather than later. Mistakes collapse before they spread. Still, the method built on agents by Schmitt and team runs fixed rules tailored only to certain cloud setups. It falls short when applied to the network equipment scaling cases handled by 
+BoQ
+-Calc. What's more, you cannot talk to it using everyday language - requests must come in rigid formats instead.
+Starting off differently each time, Lee in 2026 looks at smart grouping tactics for assigning servers across massive computing systems. Instead of exact math, the research leans on trial-and-error inspired techniques - genetic algorithms mixed with simulated annealing - to build solid server layouts without breaking setup rules. These methods get tested on setups with hundreds of machines, showing they can come close to ideal arrangements when full number crunching would take too long. Because there are just too many possible combinations, brute-force solutions fail; yet these shortcuts manage decent results anyway. What stands out is how strictly limits must be followed during planning - ignoring things like how packed a group gets or total cluster dimensions risks system crashes later. Even if enough hardware appears available on paper, overstepping those bounds causes real issues. That insight lines up tightly with safeguards already built into tools like 
+BoQ
+-Calc. Still, one catch remains: running the same process twice doesn’t guarantee matching outcomes - the starting randomness means allocations might differ every single time. When plans need clear records and repeatable results, changing outcomes become a real problem. Deterministic steps come first inside 
+BoQ
+-Calc, trading complex details for steady outputs anyone - engineers or software - can check without confusion. What matters shows up plainly, step by predictable step.
+One way to look at these studies is through their shared insight: weaving policy considerations into planning systems adds clear worth. Yet another point they make stands out - sharper optimization often means less predictable results. What becomes visible here is how methods driven by agents or rules work strongly when managing day-to-day operations. Still, under conditions where consistency matters most, such techniques fall short before deployment. Reproducibility needs shape what tools fit best.
+2.3 RULE-BASED VALIDATION AND CONSTRAINT ENFORCEMENT IN ENGINEERING SYSTEMS
+One key part of the research behind 
+BoQ
+-Calc looks at how rules check designs in engineering setups. Since resource 
+modeling
+ shows which parts are required, checks based on constraints show if a setup will actually work - matching design needs and following guidelines. Without linking these pieces closely, flawed or mismatched plans might move forward, only caught later when fixing them takes much more time and effort.
+It has long been clear in systems engineering that catching limits early pays off. Spotting mismatches while planning takes far fewer hours and materials compared to finding them during test runs, even more so when things are already running live. That idea - pushing checks earlier into design work - is why 
+BoQ
+-Calc runs guardrail reviews right after calculating size, before producing results, instead of waiting for later evaluations.
+In their 2023 paper, Gupta with Sharma explore how fixed rules help check designs in building and civil projects. Instead of waiting for human checks later on, placing automated validations early inside design workflows cuts down flawed plans - this showed clear results when tested across real cases. Rather than just stopping bad inputs, the system ought to say why something fails. For instance, knowing you went over a size limit helps more than simply being told “invalid.” Describing exactly which number broke which rule gives engineers clearer direction forward. That idea lives inside 
+BoQ
+-Calc, where failed checks come back with specific notes about what changed and how to fix it. These explanations feed right into the decision chain, helping shape follow-up questions through 
+LangChain
+ automatically.
+Starting off differently, Rodriguez together with Kim in 2021 looked into how rules shape setup processes within engineering systems. Instead of mixing ideas, they built a methodical way to handle shifting demands throughout a tech system's life span. What stands out is their split between strict boundaries - things you simply cannot do - versus flexible ones - choices that can bend if needed but still keep the whole thing working. Jumping ahead, this idea takes real form inside the 
+BoQ
+-Calc model by using safety rails built right into its structure. Compatibility between task type and machine hardware acts like one of those unbreakable limits, where mismatched cases trigger errors so strong they stop everything instantly. Picture trying to run ARM-made software on gear missing the proper support; it fails completely, no matter how much memory or speed sits idle nearby. The largest allowed cluster number acts as a strict limit, set through a deployment policy, yet it shifts across teams when someone edits the YAML config. Still, that setup stays firm until changed on purpose. Studies from Rodriguez and Kim show these kinds of boundaries help systems last longer because they make rules clear, trackable, open to change. That idea shows up plainly in how 
+BoQ
+-Calc checks data: thresholds live outside code, tucked into configs instead. Rules evolve only when needed, never locked down. Each value waits ready for updates without touching program logic.
+One after another, these studies build a solid case for weaving safety checks right into sizing systems, shaping rule breaks to return clear guidance instead of silent denials. What stands out is how both miss applying their rules to AI-powered conversational cycles - an opening 
+BoQ
+-Calc fills by feeding plain-text error explanations back into the 
+LangChain
+ agent’s thought process.
+2.4 TOOL-AUGMENTED LANGUAGE MODELS AND AI-ASSISTED REASONING
+One big shift in real-world AI work lately mixes language programs with precise computing tools. Instead of only making words, these upgraded models can now call outside actions, pull exact information, or base decisions on fixed calculations. What backs this idea powers how 
+BoQ
+-Calc links spoken questions to solid number-crunching below - using clear rules to bridge talk and math.
+What drives the need for tool enhancement isn’t just a gap - it’s how shaky number guesses become when language systems go it alone. These models read like experts, shaped by endless pages, yet their math outputs float, built on odds, not logic. Run the same question twice, get two different figures - unstable ground for serious design work. Precision demands consistency; guesswork won’t cut it. So instead of letting them calculate, we let them think, sort, explain - and hand off the numbers to tools that always follow rules. The mind guides, the machine computes.
+Starting off differently every time, Patel and team in 2026 looked into how adding tools to language models helps them handle structured thinking tasks better. By building fixed functions right into the way these systems generate answers, mistakes drop - especially when it comes to making up numbers or giving shaky results on technical questions. Instead of just guessing, the models can call specific actions during their response process, depending on how they’re set up ahead of time. These setups include clear outlines of which jobs the model can trigger, along with exact details about what inputs each job needs. Because of this precision, wild guesses fall away since only certain outputs fit within the allowed boundaries. When given smart blueprints for such tools, most models actually reach for them first whenever dealing with number-heavy problems - assuming the initial guidance pushes tool use upfront. One standout insight: how something gets explained matters deeply. If a tool’s purpose isn’t spelled out cleanly, including what its parts do, the model tends to ignore it completely. Vagueness leads straight back to made-up math, while clarity keeps responses grounded. Starting with real results, the design behind 
+BoQ
+-Calc holds up - 
+its
+ calculate_5g_resources function reaches the 
+LangChain
+ agent via a clearly laid-out tool structure. Instead of vague directions, clear prompts at the system level make sure every infrastructure math step uses that tool. Step by step, tweaks to those prompts match what was seen during testing. That fine-tuning path echoes methods Patel and team wrote about, though each adjustment here responded to live feedback.
+Starting off differently each time, Nguyen alongside Zhao in 2026 push forward a particular line of study focused on neural agents that fix themselves. These systems operate using cycles of feedback, showing clearly how mistakes made by models - alongside broken rules - are reused within thinking stages. Instead of needing fresh training rounds, outputs grow more accurate step by step. At play is a setup where responses get checked through outside tests; when something fails, the system sends back alerts as new background details during next attempts. Given this added info, the model adjusts choices it makes about settings or asks people to explain further instead of repeating incorrect answers. Such 
+behavior
+ forms what later becomes the core idea behind 
+BoQ
+-Calc's way of managing feedback through safeguards. A 
+GuardrailViolation
+ error comes through the validation stage? The message rides straight back into 
+LangChain’s
+ thinking cycle as if it were regular tool output. Then the agent folds that alert into what it says next, shaping a reply people understand - clear 
+on the misstep, nudging toward fixes. Instead of piling more training data, Nguyen and Zhao show how fixing your own mistakes cuts down wrong answers every single time, no matter the job type. That improvement just shows up. No extra tuning needed. It grows out of how tool blueprints talk to checks and repeated prompts - the very mix alive inside 
+BoQ
+-Calc’s conductor piece.
+Out in the open flow of thought and action, 
+ReAct
+ blends thinking with doing, switching back and forth between internal reasoning and reaching out to tools. Patel and colleagues, along with Nguyen and Zhao, build on this shifting rhythm, each adding their own layer to how systems respond and adapt. 
+LangChain’s
+ setup for agents makes it real - its interface talks to tools while a built-in cycle handles when to think or act. Inside that structure, 
+BoQ
+-Calc does something different: it puts guardrails right into the loop, not beside it. When rules get crossed, instead of failing quietly, the system stumbles forward by rethinking its path, guided by a flag called 
+GuardrailViolation
+.
+2.5 COMPARATIVE ANALYSIS OF EXISTING SOLUTIONS
+Out in the open, sizing tools have shifted - first came spreadsheets filled by hand. Then vendors stepped in with software that handled part of the job automatically. Now some systems answer questions using generative AI. One after another, each version improves on what came before. Still, missing pieces remain even today. That space - the spot where older methods fall short - is exactly why 
+BoQ
+-Calc exists. Each leap brought change, yet none crossed every gap.
+Most planning groups in telecom and business still rely on basic spreadsheets to figure out system sizes. Starting with user numbers, gear details, and projected demand, engineers plug data into preset formulas using rigid growth rules to guess how many servers they need. Yet underneath it all, there’s zero built-in checking to catch mistakes automatically. Whether a setup matches required architecture, stays within cluster boundaries, or fits resource limits depends only on someone reviewing it by hand - a process slow, uneven between teams, and easily flawed. These files spit out one-time answers that don’t talk back, offer no warnings if inputs make no sense, nor fix themselves when conditions shift. Whenever equipment specs or usage forecasts get updated, changing results means doing everything again from scratch, manually.
+Big companies sell tools that help plan business networks. These tools handle tasks like managing connections and guessing future needs using built-in rules. Yet they usually only work well with gear made by the same brand. That causes problems when different brands’ devices must work together. The way they calculate results stays hidden behind private software designs. Users cannot check how conclusions were reached or see why certain numbers appear. Input happens mostly through rigid screens filled with fields to fill out. Talking to them in everyday words isn’t an option. People unfamiliar with tech details may struggle to use them at all.
+Starting off different - 
+open source
+ tools for infrastructure models offer clearer visibility into operations. Yet shifting them to fit real world setups often means heavy tweaking by hand. Without built-in safety checks these systems miss automatic rule enforcement. Talking to them like a person talks? Not an option here either. So even if they bend more than spreadsheets do - they still reach about as far in what they can handle.
+Lately, tools using generative artificial intelligence - like broad language programs tuned for infrastructure questions - have made access easier than older rigid formats. Instead of filling forms, people now type what they need in everyday words, getting 
+replies that suggest computing setups through chat-like exchanges. Still, these suggestions come from patterns guessed by models, not real linked systems that verify results. The number of servers proposed might shift each time you ask, even if the question stays the same. Those numbers often ignore actual machine specs, like memory or speed, also skipping rules about design limits or company policies. When there's no fixed engine behind the scenes, nor clear blueprints guiding responses, the answers can sound certain while being wrong in count or scale. That kind of mistake becomes risky when plans based on them lead to big spending choices.
+Evaluation Dimension
+Spreadsheet Baseline
+Commercial Tools
+Generative AI
+BoQ
+-Calc Framework
+Numerical Determinism
+Partial
+Partial
+No
+Yes
+Architecture Validation
+No
+Partial
+No
+Yes
+Cluster
+ 
+Size Enforcement
+No
+Partial
+No
+Yes
+Natural Language Interaction
+No
+No
+Yes
+Yes
+Self-Correction on Violation
+No
+No
+No
+Yes
+Output Reproducibility
+Partial
+Partial
+No
+Yes
+Vendor Independence
+Yes
+No
+Yes
+Yes
+Transparent Calculation Logic
+Yes
+No
+No
+Yes
+The 
+BoQ
+-Calc framework occupies a distinct and superior position across all evaluated dimensions by combining the numerical reliability of deterministic sizing engines, the policy enforcement of commercial validation tools, and the accessibility of natural language interaction — while additionally introducing self-correction 
+behavior
+ that none of the baseline approaches provide.
+2.6 RESEARCH GAPS IDENTIFIED
+Looking at past work on infrastructure scaling, agent-driven design, rule handling, and tools mixed with AI shows clear weak spots. These are not small issues - they matter in real use. The 
+BoQ
+-Calc system builds right into those spaces. It doesn’t just skim the surface; it targets what’s missing.
+One big missing piece? A single system tying together math-driven resource planning, automated rule checks, and natural-language conversations - all in one flexible design. Most current tools only handle two parts at best. Number crunching works fine on its own - just no feedback loop or dialogue built in. Policy rules hold firm, yet they demand rigid inputs that confuse people without tech training. Starting off differently, generative AI allows chat-like exchanges yet loses the strict predictability needed for solid planning. While some approaches come close, none in existing research link these three traits through one tested framework.
+Not fixing mistakes on their own is another missing piece in today's system design tools. Some just give results without warning - even when those results break rules or policies - while others show fixed error notes that do not help users adjust settings step by step. Instead of letting errors guide next steps, most platforms leave people guessing. Yet sending rule breaks back into an AI thinking process to ask better questions has worked well in broader AI studies, like those seen in Nguyen and Zhao’s 2026 work. 
+Another issue involves how most AI tools keep thinking and calculating too far apart. These systems often let language models guess numbers directly, which can lead to inconsistent results - risky when used for real-world project forecasts. Instead, 
+BoQ
+-Calc draws a clear line: it separates the part that talks and reasons from the one that crunches digits, so smart replies stay just a front-end guide, while exact math runs independently behind the scenes.
+One more shortcoming involves how current sizing tools handle changes to validation rules. Instead of offering flexibility, commercial systems lock these checks into fixed internal code you cannot alter. On the flip side, most open options skip such validations altogether. Without exception, they fail to move boundary settings into separate config files where teams could tweak policies freely. 
+What's left undone sets the stage for 
+BoQ
+-Calc to step in. Instead of separate tools, it brings together fixed logic, built-in rules, chat-style access, and agents that fix their own errors - all packed into one setup you can adjust. This approach pushes past old-school number crunchers and isolated AI models by tackling every shortcoming with tested choices in how things are put together.
+Chapter 3
+System Architecture 
+3.1 OVERALL SYSTEM ARCHITECTURE
+Built like stacked blocks, the 
+BoQ
+-Calc AI setup uses separate layers so it can grow without breaking parts. Starting from user inputs, workloads move step by step through 
+modeling
+, then number crunching, finally checks - each stage feeding the next. One piece changing won’t force others to shift - it keeps working even when bits get swapped out. Connections between sections stay clear but flexible, letting each part do its job alone if needed. This shape helps it fit many environments, staying steady whether small or stretched wide.
+Five main parts make up the system's structure. Starting off, there is the Input Layer followed by the Domain 
+Modeling
+ Layer. The third piece involves the Sizing Engine Layer, then comes validation handled separately. 
+Ending it
+ all stands the Interface Layer. Put together, they create a sequence moving from initial workload details toward a full output list. This output meets required rules and includes exact item counts. Information moves straight through each stage when things run smoothly. If something breaks predefined limits though, an alert travels backward instead. That message goes directly to the front layer showing clear explanations about what went wrong.
+Right away, the Input Layer opens the door to the whole setup. Workload details come through here - things like how many subscribers there are, needed throughput, what kind of tasks will run, also which server setup is wanted. Each piece gets shaped into clean 
+Pydantic
+ model forms right off the bat. That way, every part of the system sees the same clear format. Turning raw inputs into fixed structures early blocks confusion before it spreads. Mistakes in reading values have less room to slip into later steps because clarity hits first.
+Something sits at the heart of the system - it's called the Domain 
+Modeling
+ Layer. Built into it are clear definitions, not just for machines but also for tasks they handle. Take servers. They get described by things like how many CPU cores, how much RAM, what kind of storage, speed of networking, which PCIe version, and the chip design. Tasks, on the other hand, show their needs: processing power required, memory needed, limits on data flow. Because these two stay apart in design, one doesn’t blur into the other. That distance lets the sizing logic work precisely, treating gear and demands as separate ideas.
+Inside the setup, one part handles number crunching. Because it turns broad inputs into exact needs, it shapes how resources are decided. After that, matching happens - needs get lined up with what machines can offer, ending in a total server figure. Since every kind of task uses its own rules here, changes stay contained. That separation means new tasks fit in later, like AI jobs or modern cloud services, even if they did not exist at first. The whole thing grows without breaking apart.
+A quiet check steps in once the engine finishes its math. If something does not align, firm limits step forward to block mismatched setups. Hardware traits face scrutiny against task needs through automatic checks. Hidden flaws in structure get caught before they move further. The system draws a line at how large clusters can grow. Any setup breaking these bounds triggers an immediate stop. A clear error message rises up when problems appear. That alert holds precise details about what went wrong. Computation pauses just long enough to pass the insight back. Rules here act like silent watchers, never allowing risky outputs to slip through. Each failure brings specific words explaining why it failed. Nothing moves on unless every condition passes cleanly.
+One way
+ users connect is through machine-based requests, using 
+FastAPI
+ to handle REST API calls for automation tasks. Another path opens via spoken or typed conversation, managed by a 
+LangChain
+-run assistant guiding back-and-forth exchanges. Depending on need, access shifts between these forms while keeping operations separate underneath. Behind the scenes, decision rules and calculations stay isolated from how inputs arrive. That split keeps updates manageable when adding new ways people interact. Even if usage grows or changes form, the central
+ 
+processing stays untouched.
+3.1.1 ARCHITECTURAL PRINCIPLES
+From the start, choices in shaping 
+BoQ
+-Calc leaned on three ideas - each call had to follow clear rules, fit together like pieces that can stand alone, yet still check themselves before locking in. Though built step by step, nothing moved forward unless it could catch its own errors early. Surprisingly strict, yes - but only because trust grows when systems never guess.
+Every time the same starting point appears, results must match exactly no matter how often it runs. Because language models guess outcomes instead of calculating them, they cannot shape size-related numbers directly. Their job gets limited to reading requests and pulling key details. Math behind sizing stays fixed, handled only by clear equations outside the model's influence. Only then can consistent outputs be guaranteed across repetitions.
+Starting fresh every time helps parts work alone. 
+One piece
+ changes, 
+another
+ stays put. Think typed connections guiding how levels talk. These links pass only clear data shapes. Hidden sharing? Left out on purpose. When a new device shows up, old code does not need fixing. Rules shift, but pieces underneath hold firm. Each job fits its slot, nothing more. Layers meet at boundaries built ahead of time. Swapping one thing never drags in unrelated tasks.
+When a setup breaks the rules, the system stops instead of giving back numbers that do not work. It does not hand off flawed results and expect someone else to catch the error. Before anything shows up on screen, violations get flagged right away. Computation freezes the moment limits are crossed. Each suggested layout has already cleared every required check. Trust comes from knowing nothing slips through without approval. Only safe outputs ever make it out.
+3.2 MODULE DESCRIPTION
+One piece
+ handles just one job in the process of deciding server sizes. Because they are split up like this, each part can be checked on its own. Changes later will fit right in without breaking anything else. Each module sticks to a single task it was built for. Clear borders between them keep things working smoothly. Work gets easier when nothing overlaps by accident. Six separate parts make the whole system predictable.
+Hardware Repository Module
+Housed within the system, a collection of server setups stands ready for the sizing tool to tap into. From each entry, shaped like a 
+Pydantic
+ model, comes details - name, chip type, core count per unit, memory size in GBs. Stored inside a Python dictionary, names act as keys, making access swift when calculations run. Truth lives here: every fact about what hardware can do flows from this one place. Speed matters; lookups happen fast, no delays, just direct retrieval mid-process. Built carefully, it supports decisions without guessing or outside checks. A fresh profile enters the system just by slipping a new example into the dictionary - no changes needed elsewhere. Adding hardware types never removes anything, only stacks on top. When checking what fits together, the 
+module hunts through stored data using chip design as the guide. Matching happens behind the scenes, shaped by structure instead of guesswork.
+Workload Strategy Module
+One way to look at it starts with how resources get estimated per workload kind. A separate function handles every type, wrapping up its unique sizing rules inside. These functions take in organized details about the task instead of guessing what's needed. What comes out is an object detailing required CPU and memory amounts. When subscribers shape the load, math from earlier sections adjusts needs by user numbers. Where data flow sets the pace, efficiency factors tied to volume guide the result. The whole setup links inputs directly to hardware demands without extra steps. One way it works: the sizing engine uses a consistent entry point to handle every kind of task, thanks to strategy-driven setup. Because of this layout, plugging in another job format means writing just one matching function. No touch-ups needed elsewhere - engine stays put, checks stay intact. Each addition slips in quietly, guided by preset rules. What changes? Only the method behind the scenes, nothing around it. New types fit without shaking up old parts. Structure holds steady while functions grow. Behind the curtain, logic adapts silently. Interface acts like a door - same knob, different rooms inside. Expansion happens without rewriting what already runs.
+Sizing Engine Module
+One step at a time, the Sizing Engine Module figures out how many servers are needed based on bottlenecks. From the Workload Strategy Module comes a set of required resources, while server specs arrive from the Hardware Repository Module. After receiving both inputs, it works out separate totals - one driven by CPU demand, another by memory needs - using rounded-up division each time. Whichever number turns out higher becomes the chosen server count. Total processing power and memory allocation follow next, found by scaling up individual machine capabilities using that final count. What gets handed back is a neatly packed result bundle holding every calculated figure, ready for review downstream. This package moves straight into the Validation Module prior to any external release. Not once does the engine check policy rules; it knows nothing about user-facing layers either. Because of that separation, testing its math stands possible without pulling in anything else from the wider system.
+Validation and Guardrail Module
+One step checks 
+rules
+ on the result from the sizing process. After that, it runs two main tests one after another. When looking at system design fit, mismatch between requested and chosen setup triggers an alert. That check watches the workload's structure type alongside the picked machine's type. Next up comes counting machines in the group. If the total number goes beyond what is set allowed in the config file, it flags a problem. This limit arrives from settings written in a YAML file. Mismatched setups cause stops just like too many servers do. Each fault gets reported as a specific violation signal. Checks happen in order, without skipping steps. A different note tags every 
+GuardrailViolation
+ exception - this one names the broken rule, shows what inputs failed, then hints at how changing a setting might fix things. Only when neither check stumbles does the system release a 
+SizingResult
+, handing it up to the Interface Layer like a quiet nod: approved, within bounds.
+API Interface Module
+Out in the open, the API Interface Module serves up the sizing engine and validation steps through an HTTP setup built on 
+FastAPI
+. Hitting the POST /calculate path kicks things off, where incoming data gets unpacked using 
+Pydantic
+ rules before anything runs. When something trips a guardrail, instead of crashing, it quietly wraps that hiccup into a clean 400-level reply shaped like JSON. Smooth outcomes come back the same way - neat bundles of structured info ready to use. Nothing sticks around after a call; every hit stands alone, untouched by what came before. Because of that fresh-start habit, tossing it behind a traffic spreader fits right into big company workflows without fuss.
+AI Orchestration Module
+The AI Orchestration Module implements the conversational interaction layer using 
+LangChain
+ integrated with a GPT-4.1-mini language model. It defines the tool schema for the calculate_5g_resources function, configures the system prompt that enforces tool-first 
+behavior
+, manages the agent reasoning loop, and handles the propagation of 
+GuardrailViolation
+ messages back into the model's reasoning context when violations occur. This module translates between the natural language domain of user interaction and the structured parameter domain of the sizing engine, without contributing any numerical computation of its own.
+3.3  DATA
+ FLOW AND PROCESSING
+Flow inside 
+BoQ
+-Calc moves step by step when things run smoothly. If limits get crossed, a return loop kicks in instead. Knowing these two paths matters because they show how the system stays accurate while fixing itself on the fly.
+ Section A 
+Valid Workload with Successful Computation
+Something kicks off once someone sends a workload description, using either the chat-style entry point or the REST API. Through the chat route, a 
+LangChain
+ agent grabs the plain-text question, then triggers the calculate_5g_resources function after pulling out needed inputs. When going via API, a 
+FastAPI
+ endpoint catches a JSON package shaped like a request body, turning it straight into a 
+SizingRequest
+ instance on arrival.
+When details arrive in clear structure, the Workload Strategy Module picks the right math rule to figure out needed CPU and also memory. That data gets packed into a 
+ResourceRequirements
+ container before moving on. Next stop is the Sizing Engine Module, where things shift gears. From there, hardware options are pulled based on requested setup. Rounding up shapes how many servers fit each need - separately for processing power and working memory. Whichever number ends higher becomes the deciding factor. At last, everything wraps together - a final headcount of machines, full processor tally, plus overall memory - in one 
+SizingResult
+ bundle.
+Starting from the top, the 
+SizingResult
+ moves into the Validation Module where first the system verifies architectural fit, then checks whether the cluster size makes sense - step by step. When everything lines up, that approved result heads over to the Interface Layer, which shapes it either as plain conversation or clean JSON, based on how the 
+exchange unfolds. What lands in front of the user? A full proposal for infrastructure, checked against policies, ready to review.
+Scenario B Policy Violation with Self Correction
+If the Validation Module finds a broken rule, it triggers a 
+GuardrailViolation
+ error carrying a clear explanation - this happens before passing any result up to the Interface Layer. Along the API route, the 
+FastAPI
+ handler intercepts that error, responding with status 400 and placing the message directly into the body so whoever called can tweak inputs and try again.
+When the system spots a rule break, it sends back a 
+GuardrailViolation
+ message through the conversation flow. Because of this signal, the 
+LangChain
+ agent adjusts its thinking before replying. Its next output tells the person exactly which limit got crossed, shows the inputs that triggered it, then points out what needs changing. With that guidance, the user submits fresh settings. Those updated entries get pulled from the dialogue and fed straight into the sizing tool once more. Each round rewinds the entire process using only the latest numbers. Rounds repeat - again and again - until an acceptable setup emerges or silence follows the last attempt.
+Faulty entries trigger clear responses, while proper ones move smoothly through. Either way, the process stays stable no matter how users engage. Outcomes remain predictable even when input shifts unexpectedly.
+3.4  TOOLS
+ AND TECHNOLOGIES USED
+A fresh pick of tools powers the 
+BoQ
+-Calc setup - each one fits its layer like a key. One sits in place because it runs faster than others nearby. Type confidence sways the choice just as much as how well it plays with 
+neighbors
+. Mature support circles help seal the decision, leaving older options behind.
+What runs everything? Python 3.11. It beat out options like Go or Java - not because it's trendy, but due to solid type handling via 
+Pydantic
+. Framework-wise, 
+FastAPI
+ and 
+LangChain
+ fit right into the workflow without friction. On top of that, tools for testing and managing config are everywhere in its world. Why version 3.11 exactly? Speed jumps stand out - launches quicker, processes bytecode more efficiently. That edge shows up clearly when using either the command line or the web interface.
+Data shapes, input checks, and structure rules rely entirely on 
+Pydantic
+ v2 across the entire setup. Not picking Python’s built-in 
+dataclasses
+ came down to one thing: actual error blocking when wrong types show up during creation, instead of letting bad values slip through unnoticed. Another reason? Smooth handoffs between 
+FastAPI
+ and object formatting happen without extra code. Version 2 made the cut over version 1 thanks to faster run speeds and tighter control when building special field validations.
+Picking 
+FastAPI
+ instead of Flask or Django REST Framework made sense for a few clear reasons. Built-in support for 
+Pydantic
+ means there is no extra code needed to handle data conversion. Because it pulls 
+OpenAPI
+ docs straight from type hints, keeping documentation up to date takes less effort. Requests run in parallel smoothly thanks to async support, skipping the slowdown that comes with one-thread-per-request models.
+Now here's something that works - 
+LangChain
+ fits the role thanks to an established agent executor loop backed by clear documentation. Instead of reinventing, we lean on its tool-calling structure that lines up neatly with OpenAI’s API. The 
+ReAct
+ logic pattern? Already supported inside, matching what 
+BoQ
+-Calc needs. Function details get spelled out clearly through its schema setup, so models know how to respond without guessing. Details stay sharp. 
+Behavior
+ stays predictable.
+Because it shows precisely which input mix broke a test, 
+Pytest's
+ detailed error output matters most when tracing issues through fifty plus validations. Built-in support for loading test sets from tabular data cuts repetition, making checks faster to write. That setup, paired with straightforward diagnostics, made adopting 
+Pytest
+ the obvious path forward.
+A 
+lockfile
+ locks down every version of each dependency, poetry handles this by tracking even the indirect ones. Same setup everywhere happens because everything installs exactly the same way every time. When outputs must match perfectly across runs, having identical conditions matters most. Development matches testing matches production thanks to fully pinned components. Consistency from start to finish shows why fixed dependencies make a difference.
+Out in YAML config files sit the numbers that set sizes and safety edges. These values float free from the main program code. That way, whoever runs deployments can tweak 
+how fast resources grow or how big clusters get. Changes match what each organization actually needs. No need touching the software itself. Never mind re-releasing the whole system just for these shifts.
+Layer by layer, these tools line up - clean, steady, each one locking into place. Not chance, but design holds them together. Where 
+one piece
+ ends, another begins without conflict. Predictability shapes how they connect. Modules stand alone, yet work as a unit when needed. Failure points get cut before they start. Each level follows the same quiet logic. Stability isn’t added - it’s built in from the beginning
+.
+Chapter 4
+Methodology
+4.1 SYSTEM DESIGN APPROACH
+Starting with workload needs, the 
+BoQ
+-Calc method turns those into precise infrastructure size estimates through an organized, block-by-block calculation process. Rather than depend on hand-calculated guesses or fixed spreadsheet models, it uses automated logic that weaves together equipment specs, task 
+behavior
+, number crunching, and checks built around verified outcomes. Shaped this way, the setup keeps sizing results steady across tries, works for various rollout cases, adjusts when needed, while still showing clear steps anyone can follow for live environment prep.
+One step at a time, the design builds up through separate layers, each handling one distinct part of capacity planning. Starting off, user needs like how many subscribers and how much traffic are turned into fixed format data pieces. After that, math rules kick in - calculating how much processor power and memory the numbers call for. Then comes assignment: matching those calculated needs to real machine types to figure out server counts. Finally, checks happen - making sure everything fits within structural limits and company policies before anything gets released.
+Decisions here rest on three main ideas. Starting with math-based rules means numbers come only from set formulas, using clear values you can adjust but never change mid-calculation - so same inputs mean same results, every time, anywhere. Chosen instead of guesswork or learning models because when budgets depend on outputs, you must track and prove every result. Next comes separation - 
+one piece
+ handles one job, whether it's server types, tasks, or checks - and none interfere, so adding something new won’t break what already works. Last guard: errors cannot slip through by accident, since any setup breaking policy gets caught before finalizing, blocked at a built-in checkpoint placed right after computing ends and output begins.
+One key detail stands out right away: the language model handles understanding what users mean, pulls useful bits from their words, then replies in a chat-like way. Yet it stays far away from any number crunching tied to size estimates. Numbers only come from another part built just for calculations. How this split works comes down to how tools are shaped on the inside, plus how prompts guide the whole setup within 
+LangChain's
+ flow manager. Because of this design choice, talking naturally with the system does not mess up consistency or accuracy when figuring out sizes.
+4.2 WORKLOAD RESOURCE ESTIMATION
+The first stage in the methodology involves estimating resource requirements based on workload parameters. The system currently supports telecom-oriented workloads such as control plane and user plane functions, each with distinct computational characteristics. These workloads are 
+analyzed
+ using mathematical models derived from industry-standard performance assumptions.
+For control plane workloads, resource estimation is based on the number of subscribers and 
+signaling
+ activity. The number of transactions processed per second is calculated using the formula:
+where BHCA (Busy Hour Call Attempts) represents the number of 
+signaling
+ attempts per subscriber during peak load. This value helps determine the processing demand placed on the system during high-traffic conditions.
+Once the transaction rate is calculated, CPU core requirements are estimated using processing capacity per core:
+The processing capacity per core is configurable and loaded from a configuration file to allow tuning based on real deployment conditions. Memory requirements are estimated using subscriber state information stored per user:
+These calculations provide a baseline estimate of compute and memory demand for control plane workloads.
+For user plane workloads, resource estimation is based on throughput demand and packet processing efficiency. If Data Plane Development Kit (DPDK) acceleration is not enabled, throughput handled per core is lower. When DPDK is enabled, throughput efficiency improves significantly. The throughput handled per core is calculated as:
+Where:
+Efficiency factor = 1.5 Gbps per core without DPDK
+Efficiency factor = 8.0 Gbps per core with DPDK
+If encryption is enabled, processing overhead is applied:
+This adjustment ensures realistic performance estimation under secure communication conditions. Using these formulas, the system determines the number of cores required to sustain the requested throughput.
+4.3 HARDWARE MAPPING AND SERVER CALCULATION
+Once resource requirements are calculated, the next step in the methodology involves mapping these requirements to available hardware configurations. Each server configuration is 
+modeled
+ with attributes such as CPU core count, memory capacity, and architecture type. The system compares required resources with per-server capacity to determine the number of servers needed.
+Server count based on CPU capacity is calculated using:
+Similarly, server count based on memory capacity is calculated using:
+The final number of servers required is determined by selecting the maximum value between CPU-based and memory-based counts:
+This bottleneck-based approach ensures that both compute and memory requirements are satisfied. If either CPU or memory becomes a limiting factor, additional servers are allocated accordingly. This methodology prevents under-provisioning and ensures deployment readiness.
+To avoid unrealistic scaling scenarios, an upper limit on server count is enforced. If the calculated number of servers exceeds a predefined threshold, the system raises a 
+resource exhaustion exception. This ensures that impractical configurations are identified early in the planning process.
+4.3.1 BOTTLENECK SELECTION LOGIC
+The final server count is determined by applying bottleneck logic — selecting the maximum of the two independently computed server counts:
+Server_final
+ = 
+max(
+Server_CPU
+, 
+Server_RAM
+)
+This bottleneck approach is the methodological cornerstone of the server count computation. It ensures that neither the CPU requirement nor the RAM requirement becomes a limiting factor in the deployed infrastructure. If 
+Server_CPU
+ is larger than 
+Server_RAM
+, it means the CPU demand is the binding constraint — adding servers to satisfy CPU demand automatically provides more than sufficient RAM. If 
+Server_RAM
+ is larger, the memory demand is the binding constraint and drives the final count.
+The justification for using the maximum rather than an average or sum is rooted in the physical reality of server deployment. Servers cannot be partially deployed — a deployment must consist of a whole number of physical or virtual machines. Given that a workload simultaneously requires both CPU and RAM, the deployment must satisfy both constraints independently. Using the maximum guarantees that the configuration is feasible from both resource dimensions simultaneously. Using an average would risk under-provisioning one resource while over-provisioning the other, producing a deployment that fails under peak load despite appearing adequate on paper.
+Once the final server count is established, total allocated resources are computed as:
+Total_CPU
+ = 
+Server_final
+ × 
+C_node
+Total_RAM
+ = 
+Server_final
+ × R_node
+These totals represent the actual infrastructure capacity that would be provisioned in the planned deployment. They are included in the sizing output alongside the server count to allow engineers to verify the headroom between required and allocated resources, and to confirm that the bottleneck logic has correctly identified the binding constraint.
+4.4 VALIDATION AND GUARDRAIL MECHANISM
+Right after counting servers but before giving size results, a system checks rules about structure and scale. One by one, each rule runs as a yes-or-no check using the sizing outcome and machine setup. If something breaks the rule, it throws a 
+GuardrailViolation
+ alert instead of moving on quietly. These alerts stop everything - the moment one fires, nothing gets passed forward. Because errors rise straight up through layers, they reach the outer edge before anything prints out. No half-finished answers slip through when a rule fails.
+Architecture Compatibility Rule
+A switch only fits if its brain type lines up with the machine meant to run it. When picking hardware, the task's core design must line up against what the box can actually handle. Matching these pieces keeps things moving without hiccups or mismatches in structure
+Architecture_server
+ = 
+Architecture_workload
+When the check fails - say, asking for an ARM-based task on a machine built only for x86 - the system triggers a 
+GuardrailViolation
+. This alert includes details: what architecture the job needs, what the machine supports, plus exactly where they clash. Running such mismatched workloads in reality leads to outright execution failure. That happens because software built for ARM chips cannot operate on x86 processors without emulation. Such extra 
+layers
+ slow things down so drastically that earlier performance estimates become meaningless. Catching mismatches before rollout, instead of during launch, turns out to be one of the more useful roles the validation step plays. What seems like a small check stops big problems later.
+A hard cap on group size means the system won’t assign more servers than the set limit allows, even if demand pushes higher. Final numbers always stay within the defined range, no matter how growth pulls. The total never climbs past what the rules permit under load expansion
+Server_final
+ ≤ 
+Server_max
+When too many servers are calculated, the check triggers an alert showing how many were requested, what the limit is, and suggests cutting back on demand or picking stronger machines. Loaded when the system starts, the limit comes from a config file written in YAML format. Racks packed tight, limited power, narrow network headroom - these real-world boundaries shape where the line gets drawn in such setups. Cloud spaces that stretch on demand often allow more breathing room before hitting the ceiling. What keeps this rule useful is its ability to shift based on real conditions instead of fixed internal rules made up without context.
+A new kind of error appears when rules are broken, built by extending Python's default exception system. Not just code noise - this one shapes its message so people can read it plainly. Crafted to speak clearly to two listeners at once: a person chatting through an interface, also a machine parsing 
+outcomes
+. One part guides the model on how to tweak 
+its next move. Another helps someone unfamiliar with coding grasp where things slipped. Words chosen carefully - too vague and the AI stumbles; too complex and the user 
+does
+. Phrasing walks a line, tight but not stiff. Each alert carries detail precise enough for automation, yet framed like advice you'd give a coworker. No jargon padding, no extra steps buried inside. What shows up fits exactly what broke, told straight.
+4.5 AI-ORCHESTRATED INTERACTION LAYER
+A fixed calculation system sits inside an AI setup built on 
+LangChain
+ and a compact version of GPT-4.1, forming a managed conversation space. Instead of filling out rigid forms, people ask for infrastructure sizes using everyday words. What drives this flow? A strict rule: any number crunching happens only through the preset engine, never by the language model inventing answers on its own. Hidden beneath talk-like exchanges, the AI forwards each request straight to the math-based module. Even when phrased casually, every query ends up feeding into hard rules, not guesses. The moment numbers appear, control shifts away from the chat part and lands in the locked-down calculator. Language fades. Logic takes over. Precision stays enforced because imagination gets blocked at the gate. Though it talks like something flexible, the core refuses to improvise. Behind smooth replies lies a rigid spine - no room for deviation. Decisions emerge unchanged each time, pulled from code, not thought.
+One way to set up tool details is through a format that shows what calculate_5g_resources can do when the 
+LangChain
+ system runs. It includes four inputs: sometimes a number of users if demand comes from subscriptions, while at other times a decimal value for data speed needs. Hardware choice appears as 
+server_name
+ written plainly in letters. The kind of chip needed goes inside architecture, also as text. Descriptions in everyday words go beside each one so the AI understands how real requests link to these slots. That helps match spoken needs to correct entries when pulling out info.
+Right from the start, the rules given to the model shape how it uses tools first. Instead of guessing server numbers, it must run the calculate_5g_resources function every time math is needed. When a guardrail blocks progress, the response shows exactly what tripped it, names the faulty value, then asks for the fix - plain and clear. Early tests revealed certain questions made the model skip steps, so tweaks kept coming until even odd wordings led to correct actions. Each change focused only on closing gaps where shortcuts once slipped through.
+If a guardrail gets broken while someone talks with the system, an error note comes back through the usual tool response path to the 
+LangChain
+ agent. Because of this, during its next thinking phase, the agent includes that note as part of what it considers before replying. Its answer then tells the person what went wrong and asks them to adjust their input accordingly. There is no need to change how 
+LangChain
+ works at its core - everything runs on existing pathways for returning results. That setup shows smart adjustments can emerge just from structure, without tweaking the underlying model.
+4.
+6
+ OUTPUT GENERATION
+Once everything finishes without errors, the tool builds a result package. This happens after size calculations succeed and validations clear. Inside sits a bundle of details tied to the setup picked. 
+One part
+ names the selected hardware profile. Another counts how many servers are needed - physical or virtual. The third adds up all processor power across those machines. Last comes memory, shown in gigabytes for the whole group. That collection becomes the Bill of Quantity. Others can tap into this process directly through interfaces meant for software or people.
+One group 
+benefits
+ when engineers work via chat or terminal - each field holds what they need to request gear or map out setup steps. Since machines rely on structured data, the JSON version of 
+SizingResult
+ fits right into software tools that track resources, place orders, or forecast needs. People get clear details for real tasks; programs receive clean input without needing someone to translate it. While humans see organized specs, scripts pull values straight into processes like buying equipment or scheduling rollouts. No extra decoding is required because the format speaks plainly to both teams and technology at once. Though built for different uses, every part aligns so actions follow smoothly whether typed by hand or triggered automatically. What one user reads as instructions becomes code-ready data for another system behind the scenes.
+Over at /calculate, the system listens for POST messages, fitting how REST likes to handle heavy lifting instead of just fetching stuff. A JSON package called 
+SizingRequest
+ gets sent in, kicking off a chain of checks and calculations from end to end. When things go right, back comes a 
+SizingResult
+ packed in JSON; when rules get tripped, an organized error steps in. Status codes carry meaning: 200 means all good, 400 flags issues users can fix themselves, like wrong inputs. If the shape of the incoming data breaks basic structure - say, missing fields or wrong types - then 422 shows up early, stopping further processing.
+Built in pieces, the system keeps output handling separate from how size calculations work. Communication happens only through specific rules called 
+SizingResult
+ and 
+GuardrailViolation
+. Changes inside the math part won’t touch the outside connections. The outer layer stays untouched even when inner checks shift. Each side moves independently, linked by clear contracts rather than shared code. When one updates, the other does not need to follow. Structure prevents ripple effects across parts.
+Chapter 5
+Implementation Details
+5
+.1 OVERVIEW OF IMPLEMENTATION STRATEGY
+Building the 
+BoQ
+-Calc AI Infrastructure Sizing System happened piece by piece, focusing on clean splits between parts, ease of testing, and room to grow. Instead of packing everything into one big block, it split into four separate but linked sections: the engine that calculates resources step by step, the rule-driven check layer, the interface built with 
+FastAPI
+, and the coordination unit powered by 
+LangChain
+. One after another, each part took shape and got checked alone before linking up, so problems in any single section wouldn’t hide what others were doing.
+Step one built the main calculation system, setting up math-based resource formulas alongside hardware storage designs using 
+Pydantic
+ models. Built next was the checking mechanism, slipping rule safeguards right into the flow of calculations. Then came the AI coordination part, linking fixed-code systems to the language model by way of a clear tool structure. This order kept number accuracy and policy checks solid before adding chat-style interaction, so smart guesses couldn’t hide flaws in basic math steps. Phases moved forward one after another, each locking in place before the next began.
+5
+.2 SOFTWARE PLATFORM AND COMPUTATIONAL FRAMEWORK
+Python 3.11 runs the whole 
+BoQ
+-Calc system because it handles types clearly, offers solid tools for server-side coding, while working smoothly alongside 
+FastAPI
+ and 
+LangChain
+. Built-in structure from classes keeps parts like hardware definitions, load methods, and checking logic split apart yet connected through precise contracts.
+Right from the start, the system leaned on 
+Pydantic
+ v2 to shape and check its data. Hardware setups and task settings take form through classes based on 
+Pydantic’s
+ 
+BaseModel
+, locking down correct types when created. If something slips - like feeding a word instead of a number for user count - it breaks right there, up front. That kind of mismatch never sneaks deeper into calculations. Instead of moving forward with messy inputs, rules tied to specific fields step in early. Negative numbers for users? Zero tolerance. Throughput must rise above zero, enforced without debate. These checks act as gatekeepers, filtering out bad values long before sizing decisions get made. Data either fits or fails, no middle ground allowed.
+Out there among tools for building web services, one choice stood out - 
+FastAPI
+ powered the setup to turn the sizing logic into an accessible HTTP interface. Performance played a big role in picking it; benchmarks show it runs faster than many other options built for Python. Documentation builds itself when endpoints are typed clearly, which cuts down manual work and keeps things accurate. Because it works naturally with 
+Pydantic
+, shaping data became smoother without extra layers getting in the way. At the core sits a single endpoint: POST /calculate takes a JSON package filled with details about workload needs. Back comes either a computed size estimate or a 
+clear message explaining what went wrong. When multiple users ask at once, async handling lets each request move forward without waiting on others. That kind of 
+behavior
+ fits well inside larger automation systems where timing matters and delays cause ripple effects. Built-in efficiency means less tweaking just to keep up under load.
+With Poetry managing dependencies, environments stayed separate and predictable thanks to its 
+lockfile
+ feature. The exact versions of every library appeared locked down in that file, so changes couldn’t slip in unnoticed. Because the system must deliver identical results every time, matching setups everywhere became essential. A mismatched package could shift 
+behavior
+ - so precision mattered most when moving between machines. Consistency wasn’t just convenient here - it shaped how the whole setup held together behind the scenes.
+Running the tests relied on 
+Pytest
+, where different workload setups emerged through flexible setup tools built into the framework. Instead of writing each case separately, a single marker made it possible to run over fifty variations cleanly. These included small, moderate, and massive numbers of users spread across various machine types. Settings like growth factors and upper limits for cluster nodes came from structured text files. That way, changing conditions happened outside the main program logic. Each trial adjusted itself based on external definitions, avoiding hardcoded values entirely.
+5
+.3 DETERMINISTIC ENGINE DEVELOPMENT AND HARDWARE REPOSITORY
+What drives the 
+BoQ
+-Calc system is a fixed set of rules for calculating resources. Inside this setup, 
+one part
+ stores details about different server types, organized neatly. That piece works alongside another that turns user inputs into exact hardware needs. Instead of guesswork, it relies on math models described earlier in the method. These pieces fit together to form how everything runs.
+One server inside the hardware list shows up as a structured data block holding its name, chip type, core count per unit, memory size in GB, along with extra specs needed for checking rules. Held within a Python 
+dict
+ using names as keys, fast access happens when calculating resource needs. A fresh setup enters the collection by making a new data object and placing it into the map - no touching surrounding modules. That means adding gear details stays independent from the code that handles scaling decisions.
+Figuring out how much power a system needs comes down to math built into special tools. When users drive demand, processing muscle equals total customers split by one thousand, while memory need means that same number chopped by five hundred. In cases where data speed sets the pace, brainpower doubles whatever gigabits fly through each second, memory instead quadruples it. Those numbers guiding the math - like two or four - are pulled straight from a config file written in YAML format. That setup skips fixed values inside code, making changes possible depending on where things run, no rewrites needed ever.
+Figuring out how many servers are needed starts by dividing total CPU needs by what one server offers, rounding up any leftover fraction. What comes after that? The same step happens again, only now it is memory instead of processor power. Whichever 
+number turns out bigger becomes the actual 
+amount
+ of machines used. This round-up trick means even a tiny extra demand brings an additional box into play. Once the headcount settles, each machine’s full specs get multiplied by that number. Out pops both the final tally and exactly how much computing muscle stands 
+ready.
+.
+5
+.4 GUARDRAIL VALIDATION LAYER IMPLEMENTATION
+Right after figuring out the server count but before sending anything back, a series of yes-or-no checks run automatically. Instead of waiting, each check grabs the calculated size along with matching hardware details to test just one rule at a time. When a rule fails, it triggers a special error called 
+GuardrailViolation
+ without moving forward. That error comes packed with clear info showing exactly which condition broke and how changing a specific setting can fix it. Before returning results, every value passes through these focused verifications in sequence.
+One step 
+checks
+ whether the workload's architecture fits the chosen server's architecture. When they differ - say, asking for ARM on a machine built only for x86 - it triggers a 
+GuardrailViolation
+ with details about the conflict. That alert stops deployments where the hardware can't run the software’s instructions. Without catching it early, the problem would show up too late, once deployment begins.
+When the system calculates how many servers are needed, it checks that number by pulling the limit set in the YAML config file. That limit acts like a ceiling - once crossed, a warning pops up called 
+GuardrailViolation
+. This alert means current settings would demand more resources than allowed under policy rules. Being able to change the threshold freely lets companies of various sizes apply their own standards. The core check stays untouched even when adjusting these boundaries. Flexibility comes built-in on purpose.
+A new exception type called 
+GuardrailViolation
+ extends Python’s standard Exception class. Built to plug straight into 
+LangChain’s
+ reasoning cycle, its text output fits the next prompt as-is. When the control layer detects a breach, the message flows naturally into the follow-up query. Shaping it this way made real-time correction in dialogue possible. The fit inside the loop removed extra processing steps.
+5
+.5 FASTAPI SERVICE LAYER AND API DESIGN
+A calculation happens when something sends data to /calculate using POST, shaped just like 
+SizingRequest
+ says it should be. This way, planning software or internal systems can plug into the sizing logic without guessing. Machine-readable answers come out the other side, ready for use elsewhere. What talks to it doesn’t need human steps - just send the details and get back what fits.
+One part of the 
+SizingRequest
+ model holds subscribers - an optional whole number for workloads based on user count. Sometimes it uses 
+throughput_gbps
+ instead - a decimal amount showing needed data speed when performance drives demand. A label called 
+server_name
+ points to a specific machine setup stored in the system, always written as 
+text. Another text entry, architecture, defines what kind of processor is necessary for the task at hand. Because 
+Pydantic
+ checks each piece individually, mistakes in format get caught early. Wrong shapes or types stop right there - no further processing happens past that point. Instead comes back a 
+422 status
+ code, clear and named: 
+Unprocessable
+ Entity. Errors list exactly which parts failed, along with explanations tied directly to those spots.
+Once the calculation finishes correctly, you get back a JSON answer showing the 
+server
+ name, how many servers are needed, total CPU cores, plus the amount of RAM in gigabytes. When a 
+GuardrailViolation
+ pops up while processing, the system intercepts it and sends a formatted 400 Bad Request instead - inside sits just the reason for refusal, spelled out plainly. Because errors follow this pattern, anyone or anything using the API understands exactly what went wrong, whether they’re people or scripts running checks. Feedback stays predictable, no matter which problem shows up.
+Out in the open, 
+FastAPI
+ builds live docs by itself, showing up right at /docs. Testing size questions by hand? Done there, no extra tools needed. Later folks connecting to the sizing tool get clarity because it explains itself on arrival.
+5
+.6 LANGCHAIN ORCHESTRATION AND CONVERSATIONAL INTERFACE
+From inside the 
+BoQ
+-Calc system, a smart assistant handles talk-like inputs by turning questions into clear actions for the calculation engine, guided by fixed rules on what tools to use. Built with 
+LangChain’s
+ agent structure, it runs on a compact version of GPT-4.1, reached through OpenAI, picked because it thinks well without slowing things down or raising expenses too much.
+One way to start is by noting the tool schema sets up the calculate_5g_resources function using four specific inputs tied to the 
+SizingRequest
+ model - subscribers, 
+throughput_gbps
+, 
+server_name
+, along with architecture. Each of these comes with a plain-language explanation, helping clarity. That detail matters because the model leans on those descriptions while parsing questions, linking what users say to actual settings. When it chooses to trigger the function, something happens behind the scenes: 
+LangChain
+ steps in, passing the gathered data as a type-checked dictionary straight into the Python code. From there, the logic runs a fixed calculation, nothing left to chance.
+Each time a session begins, the language model gets clear directions. It must use the calculate_5g_resources tool whenever figuring out infrastructure size comes up. Working out numbers on its own is not allowed. Through repeated tests, those rules were sharpened. Some ways of asking questions used to make the model guess instead of using the tool - now that does not happen. When a guardrail breaks, the model speaks plainly about it. What needs changing? The required tweaks are named directly so things can move forward. Clarity matters most when limits get crossed. Adjustments come into view only after errors show themselves. Rules exist not just to block but to guide next steps.
+A guardrail breach triggers an error note sent straight to the 
+LangChain
+ agent - this note arrives just like any regular tool output. Instead of breaking stride, the agent tucks the 
+warning into its thought chain before drafting the next reply. Out comes a clear heads-up for the user: what went wrong, plus exactly which detail needs fixing. No framework tweaks were needed; everything runs on built-in tool messaging, nothing more
+.
+5
+.7 SYSTEM INTEGRATION, TESTING, AND RELIABILITY
+Through system integration testing, it became clear the four parts of 
+BoQ
+-Calc worked together as intended across every tested scenario. Starting with a user question, each step unfolded just like real usage - language interpretation came first, then tools got called into action. Computation followed, precise and fixed in logic, while checks ensured boundaries stayed respected. In the end, results took shape properly formatted, flowing smoothly from one stage to the next. The whole cycle repeated under varied loads without breaking rhythm.
+Into three parts split the tests for 
+Pytest
+, each matching one key check: right size, safety rules, how agents behave. When resources came in fractions, ceiling math had to apply - tested across every allowed workload input. Instead of finishing normally, the system must throw a 
+GuardrailViolation
+ if setup mismatches occur or clusters grow too large. No results at all should appear when safeguards stop things, not even half-done ones. Each case for sizing ran many variations, confirming limits based on CPU and memory were never broken. Checks for agent reliability made sure responses stayed consistent under expected conditions. Failures due to wrong setups got flagged early, before any further steps could follow. Valid inputs covered edge values too, especially where rounding might slip. Safety checks did not allow workarounds, regardless of order or request type. Correctness meant meeting minimums strictly, nothing less ever accepted.
+Running the same tasks again and again showed matching outcomes every time. Since calculations follow clear math rules without random elements, any mismatch would point to coding errors, not how the system works. Every check passed without a single inconsistency showing up.
+When bad API requests were sent - like ones missing needed parts, using numbers too big or small, or asking for servers that do not exist - the system did not crash. Instead, it answered each time with clear, organized errors explaining what went wrong. This showed checks happen right at entry points before anything moves forward. Validation inside 
+Pydantic
+ makes sure data fits rules when first received. If something slips through, the middle layer stops it with specific exceptions. Even later, during actions, agents adjust on their own if faced with incorrect setups. Together, these layers block broken inputs from spreading no matter which route they 
+take.
+.
+Chapter 
+6
+Experimental Results and Discussion
+6
+.1 NOTE ON CONCEPTUAL STAGE
+Starting from scratch, the early idea behind 
+BoQ
+-Calc took shape by setting down basic principles and structure guiding what came next. Telecom and business setups kept running into the same problem - figuring out infrastructure size using spreadsheets, hand-checked supplier data, and fixed rules without real oversight or user-friendly access. A different path emerged: blending precise calculation of resources with rule-based checks, while adding AI-driven conversation support - all packed into one flexible system design.
+A starting point emerged when the core query took shape. What if fixed rules for setting infrastructure size joined forces with policy checks run through defined boundaries, while a language model chimed in under tight supervision - could that yield dependable, repeatable 
+BoQ
+ suggestions anyone might use? Tackling it led to a setup split into three tiers. One part crunched numbers using precise models. Another scanned outputs against hardcoded rules. The third opened dialogue, guided by a language system tied into 
+LangChain’s
+ framework.
+From the start, choices about structure focused on splitting logic handling from number crunching. The role of the language model took shape quickly - it would coordinate tasks but never produce numeric results. Instead, figures for servers, CPU loads, and memory needs came only from verified internal calculations. That way, automated suggestions couldn’t interfere with fixed computational rules. Such a rule shaped how the whole setup evolved.
+Nowhere did the plan ignore mistakes. Instead of crashing quietly or guessing during boundary issues, it returned error messages right into decision steps - asking users what they really meant. Because of this, staying safe felt natural. Usability grew without extra effort. Early ideas shaped
+ 
+everything after: building, checking, reviewing - all followed that first sketch.
+6
+.2 PLANNED EVALUATION DESIGN AND METHODOLOGY
+To check how well 
+BoQ
+-Calc works, testers focused on three separate aspects: whether the sizing engine produced accurate numbers, if the guardrail system held up under edge cases, then how consistently the chat interface responded when guided by AI. Since it does not rely on probability like forecast models do, measuring success meant looking at exact outputs instead of prediction rates. Verification 
+centered
+ on proving each result followed rules, rather than estimating likelihoods.
+Start strong. One part checked if numbers matched up right every time, using fixed rules on many different job sizes. Not just checking - making sure systems never ran too lean either. Then came pressure tests. These made certain limits held firm when pushed wrong ways on purpose. Boundaries stayed solid, no matter how odd the attempt. Last piece watched chat responses closely. Queries brought exact tools into play each round, never guessing what might work. Precision mattered most here.
+To check sizes, tests built with 
+Pytest
+ ran through situations shaped by user activity along with data flow demands. Over fifty separate checks spread out among small, medium, and massive setups filled the scope. Every setup got tested on various machines pulled from storage, hitting different mixes of processor and memory limits. On safety rules, special flawed conditions sparked one type of failure at a time. Tools 
+judged agents using hand-crafted phrases sent via 
+LangChain
+, comparing real actions taken to what should have happened.
+6
+.2.1 TEST ENVIRONMENT
+Testing happened inside a locked-down digital setup meant to stay consistent every time. Running on Python 3.11, the core system shaped its size predictions through clear 
+Pydantic
+ blueprints plus checks based on fixed rules. Chat coordination came alive by linking 
+LangChain
+ to a compact version of GPT-4.1, reached through OpenAI's interface. Built with 
+FastAPI
+, the external gateways offered REST-style routes so programs could talk without human steps.
+The environment specifications were as follows:
+﻿﻿﻿﻿﻿﻿﻿
+Python Version: 3.11
+Primary Libraries 
+Pydantic
+ v2 
+LangChain
+ v0 2 
+FastAPI
+ v0 111 
+Pytest
+ v8 0
+Language Model GPT 4 1 mini via OpenAI API
+Checks run through 
+Pytest
+, using varied inputs shaped by specific conditions each time.
+Testing individual units happened with 
+Pytest
+, where preset subscriber numbers and throughput levels helped shape varied workloads automatically. Instead of hardcoding settings, values like scaling factors and upper cluster limits lived in organized YAML files. By locking random seeds and relying on predictable model responses, each test delivered identical results every time it ran. Reproducibility stayed consistent across repeated trials because 
+behavior
+ never drifted unexpectedly.
+6
+.2.2 EVALUATION METRICS
+Since it works by fixed rules instead of predicting odds, checking right answers and rule following matters more than hit rates. To capture every angle, three kinds of measurements came into play. Across each test, 
+behavior
+ stayed consistent under 
+pressure.Under
+ testing, numbers lined up when server tasks were built around bottlenecks - every workload met the required rules without exception
+Final server number stays at or above what the processor needs. When the CPUs set a minimum, the servers must match it. Only when enough machines are running does the system clear that bar. Meeting demand means never dropping below that core-driven target. Whatever the CPU demands, the live servers have to equal or beat.
+Final server number must match RAM needs - otherwise, adjustments happen. Memory rules set the minimum machines needed. When capacity shifts, so does the total count. Size depends on how much each box holds. If demand rises, more boxes appear. What fits inside shapes the outcome. Needs define numbers, nothing less.
+ 
+Avoid gaps in supply. The upper limits are checked so partial shortages do not happen.
+Through guardrail enforcement metrics, the system faced testing on how well it managed limits within every type of violation
+Mismatch spotting in design setups: share of wrongly shaped asks rightly blocked. What slips through cracks drops when checks tighten. Filters catch odd fits before they 
+cause hiccups. Spotting wrong blueprints early avoids later messes. Faulty plans get weeded out fast. Right rejections count matters most here. How many mismatches bounce reveals system sharpness.
+A single deployment trips the limit - most huge setups stop early. When systems grow too large, stopping them first matters more than what comes after. Only some massive clusters get blocked in time. The number reflects those caught ahead of output creation. Size checks act as a gate, yet many slip through unchecked.
+Unexpected inputs now halt processing cleanly. Errors pop up only when they should. No fragments slip through before a stop signal. The system checks each step like 
+it's
+ counting heartbeats. A misstep leads straight to 
+shutdown
+ - no detours. Every failed guard triggers just once. Nothing extra sneaks out. Precision stays tight, moment by moment.
+ 
+Agent Level Reliability Metrics Show Controlled AI Integration
+How often tools get used instead of guesswork when handling number tasks shows up in the results. Sometimes a system picks fixed methods over creating answers from scratch. This balance shifts depending on what kind of question appears. Fixed procedures tend to step in when precision matters most. Other times, generated responses take over without reaching for external tools.
+What stayed clear was how often the system caught its own mistakes, flipping to a question rather than returning wrong numbers when rules were bent. Each misstep tested whether a pause and ask would happen before bad output slipped through. Accuracy here measured only those moments where it chose doubt over error. The real check wasn’t speed or fluency - it was restraint when things started drifting. Only clean halts counted, not recoveries after damage.
+A single setup always led to the exact same result every time it was tested. Each run matched the last without variation when conditions stayed unchanged. When input stayed fixed, output never wavered throughout trials. Every trial confirmed repetition as long as starting points were held constant. Repeated entries brought forth repeated outcomes each instance they appeared.
+6
+.3 EXPECTED PERFORMANCE AND USER TRIALS
+Starting off, the 
+BoQ
+-Calc AI tool gives steady results that follow set rules every time it's used. Instead of just hitting correct numbers, it proves dependable by sticking to limits without fail. Throughout different uses, its responses stay on track even when tasks shift unexpectedly. What matters most shows up in how calmly it handles change while keeping outputs uniform.
+Right in the middle of things, the system leans on server math built around bottlenecks, keeping both processor and memory from running too lean. When user numbers drive demand, special multipliers turn those headcounts into exact needs for computing power and RAM - then spread them over individual machines. If the workload hinges on data flow instead, scaling comes straight from how fast information moves. Every time a split happens in the math, rounding up makes sure tiny leftover amounts still get their own full machine slot. That last bit keeps partial requests from turning into shortchanged setups.
+When settings follow the rules, outcomes stay exactly the same every time it runs. Same number of users, same machines, same setup - always leads to matching numbers for servers, CPUs, and memory. Built that way on purpose. Tests using 
+Pytest
+, run many times with different inputs, confirmed it works as intended.
+When users ask questions in casual talk, the system must call the fixed-rule backend tool every time it deals with numbers, no matter how the query sounds. Instead of guessing, the language model stays silent on server count predictions. If inputs go beyond safe limits, the response seeks clearer details before doing any math. Catching its own mistakes like this was seen as essential protection inside the conversation engine.
+6
+.3.1 ANTICIPATED SYSTEM RELIABILITY
+Every time you run it, what matters most is whether 
+BoQ
+-Calc follows rules exactly. Instead of tracking how long it stays running, trust comes from doing the right thing every single time. When given bad data, it must push back - firmly. Its job isn’t to be online constantly but to stay sharp when used. Correct results today mean just as much tomorrow. What counts? Precision in decisions, not server logs. It earns confidence by never guessing and always holding line.
+Every time the workload architecture did not match the server setup, detection had to fire without exception. When clusters grew beyond allowed limits, execution stopped immediately, every single instance. Correct workloads never ran short on resources because the math always rounded up by design. No partial credit applied - each test either worked fully or failed outright. Decisions relied on clear outcomes, not probabilities, since 
+behavior
+ followed fixed rules.
+6
+.4 COMPARATIVE ANALYSIS AGAINST BASELINE
+Not every tool 
+handles
+ building estimates the same way. One method sticks to old spreadsheets, fixed and unchanged each time it runs. 
+Another
+ pulls answers straight from generative AI without checks or structure. The 
+BoQ
+-Calc system takes a different path - mixing guided logic with smart prediction. Where others guess or repeat rigid formulas, this approach locks steps into place. Accuracy shifts when rules are built into the process instead of added later. Mistakes drop off when boundaries shape responses from the start. Responses stay consistent because pathways are defined ahead of time. Loops and confusion fade under structured flow.
+A fixed spreadsheet acted as the starting point - a standard method where staff typed in customer numbers and gear details using basic formulas, but nothing checked errors inside. Even though it gives number results, it misses design flaws, ignores maximum group sizes, fails to block impossible scale setups. Any checking needed happens only when someone looks over it later. Instead, the 
+BoQ
+-Calc system builds checks right into the process, stopping bad designs early, rejecting them before any result appears.
+A basic version using generative AI handled tasks by sending requests straight to a big language model, skipping any fixed tools or system checks. Even though this setup makes it easier to talk to machines with everyday words, its answers come from likelihoods, not rules - so results might shift between tries, and safety steps can slip. 
+Numbers about servers guessed just by the model tend to change each time, lacking links to real gear data. What 
+BoQ
+-Calc does is split thinking from calculating, making sure every figure comes from solid, predictable code behind the scenes.
+Evaluation Dimension
+Spreadsheet Baseline
+Generative AI Baseline
+BoQ
+-Calc Framework
+Numerical Determinism
+Partial (manual)
+No (probabilistic)
+Yes (enforced)
+Architecture Validation
+No
+No
+Yes (automated)
+Cluster Size Enforcement
+No
+No
+Yes (guardrail)
+Natural Language Interaction
+No
+Yes
+Yes (tool-controlled)
+Self-Correction on Violation
+No
+No
+Yes (agent loop)
+Output Reproducibility
+Partial
+No
+Yes (deterministic)
+Table 
+6
+.1: Comparative Analysis of Sizing Approaches
+6
+.5 POTENTIAL CHALLENGES AND MITIGATION STRATEGIES
+Ahead of its strong results, the 
+BoQ
+-Calc system faced hurdles that shaped key choices in how it was built and tested. These obstacles came to light through hands-on work, revealing what happens when fixed-rule construction models meet AI-driven coordination. Rather than smooth integration, real-world limits emerged - limits tied to timing, structure alignment, and response predictability. Each fix involved trade-offs between accuracy and responsiveness. Some assumptions had to shift once actual data entered the loop. Even small mismatches in input format led to cascading delays. The path forward meant reworking feedback pathways more than expected. Stability often depended on external factors outside model control. Surprisingly, one major bottleneck stemmed from legacy file handling, not logic flaws. Over time, patterns surfaced around where human oversight stayed necessary. Success relied less on full automation and more on well-placed checks.
+One hurdle meant making sure the language model kept turning to the fixed backend tool instead of guessing numbers on its own. At first, some ways of asking questions made the model try to figure out server totals internally. To fix that, clearer directions were built into the system prompt telling it to use the tool every time a number needed 
+calculating. Guessing by the model happened less once those prompts got sharpened over several rounds. Each update helped close gaps where freeform answers might slip through.
+Trouble popped up again when setting limits on how big clusters could grow. That limit needs to stretch far enough for real massive setups, yet stay tight enough to catch impossible ones. Figuring it out meant studying actual network and business usage examples. They slipped the selected value into the YAML file as something you can change later. No need to touch the main code if adjustments come up down the road.
+A different hurdle came up when trying to keep architecture checks flexible enough for upcoming hardware entries. At first, just x86 and ARM got verified during setup. Later on, the checking system changed so it could handle any kind of processor label using basic text matching. That shift meant newer devices fit right in without touching core rules. Flexibility stayed intact.
+Sometimes, keeping track of past messages in long chats made the system mix up old details. When users asked several size questions one after another, the model would mistakenly reuse previous settings. To fix this, every new request now carries along the complete chat history. That way, current requirements are clearly repeated each time instead of being guessed from what came before. Full context travels with each call so nothing gets assumed. Clarity stays high because everything needed is right there in the latest message
+.
+6
+.6 DISCUSSION OF NOVELTY AND CONCLUSION
+A fresh take on infrastructure sizing shows up in the 
+BoQ
+-Calc system, built quietly but with clear intent. What sets it apart begins not with bold claims, yet with how number-crunching and AI dialogue are stitched together - on purpose, within limits. Instead of letting loose responses shape decisions, numbers here stem only from tested equations, guarded behind logic walls. Earlier versions let guesswork slip in; 
+this one blocks
+ that path deliberately, 
+favoring
+ structure over spontaneity. Reasoning talks, math decides - the roles stay fixed, never swapping places.
+A fresh twist comes through agents that fix their own mistakes when handling infrastructure rules. If a guardrail gets tripped, the system does not shut down quietly or spit out some vague alert. It takes that misstep and loops it back into the thinking chain, nudging the person to clarify what they meant. That reroute turns roadblocks into chances to rethink choices together - smoother for users, yet still tight on control. Such an approach adds weight to earlier work around smart language tools shaping how we build digital systems.
+Breaking things into parts helps the system grow easily. 
+One piece
+ handles resources, 
+another
+ checks rules, one shows data through APIs, yet another guides AI tasks. These pieces work alone but connect clearly. Changes in how jobs run, what machines are used, or updates to checking logic fit right in. The whole setup stays steady even when adding something new. It follows ways developers now prefer for building tools that last, adapt, and handle more over time.
+Looking back, tests show 
+BoQ
+-Calc hits all three goals - it delivers exact numbers every time for real workloads, holds firm on rules by checking guardrails, also ensures stable AI responses using strict tool templates. Oddly enough, the results prove clear-cut 
+modeling
+ and creative AI output aren’t opposites. With smart setups like tool formats plus enforced policies, assistance becomes easier to reach yet still sticks to standards vital for live 
+systems..
+Chapter 
+7
+Conclusion and Future Scope
+7
+.1 CONCLUSION
+One way to start is by saying the 
+BoQ
+-Calc AI setup shows clear rules for tech planning can work alongside smart response systems - all inside a structure that follows set policies. It took shape through building an organized engine meant to turn usage details - like how many users, data speed needs, and machine specs - into real equipment results such as number of servers, full processor capacity, and needed RAM. What made it stronger was adding checks during processing; these act like barriers that block setups which break design limits or go against allowed ranges, stopping bad plans before they ever show up.
+One big win here was splitting number crunching cleanly from idea generation. Because every resource guess comes from checked math rules, not guesses made by a talking robot brain. What ties it together - using tools like 
+LangChain
+ - only handles talk, turning words into settings the fixed calculator can run on. So even though you chat freely, nothing gets fuzzy when results come out; they stay solid, repeatable. By keeping things apart like this, using plain speech doesn’t cost precision.
+What stands out most is how agents fix their own actions within this setup. If something trips a safeguard - say, asking for too many nodes or pairing the wrong software with hardware - the response isn’t just failure or guesses. Feedback about the issue gets sent straight back into the decision-making process, leading to questions that guide better choices next time. Rather than blocking attempts quietly, it opens up conversation, turning rules into part of the planning flow. How limits are handled shifts - not refusal, but adjustment through exchange.
+Breaking things into parts - like the engine that 
+models
+ resources, the rules for checking them, the outer layer built with 
+FastAPI
+, and the part managing AI steps - helps keep everything easier to update later. 
+One piece
+ talks to another only through clear connection points, so changing one won’t break how others behave. Tests ran under over fifty different setups showed it always gives setup advice that follows the rules when inputs are good, yet still flags issues properly whenever something crosses a line. The design holds up even when pushed through varied conditions.
+Loosely put, the project shows what happens when coding methods meet old-school planning. Instead of relying on spreadsheets, it leans into automation that checks itself as it goes. Think data shaped with purpose, rules that catch errors early, pieces built to fit together later. A bit like assembling furniture using smart parts that only click when aligned right. This setup doesn’t just tally items - it grows smarter each time someone uses it. Telecom teams might find it fits their pace; 
+so
+ could big internal IT groups. Not magic - just logic stacked wisely. Behind the scenes, structure does most of the work. One step at a time, it turns guesses into guided choices
+.
+7
+.2 LIMITATIONS OF THE CURRENT SYSTEM
+Even though 
+BoQ
+-Calc meets its main goals, some drawbacks in how it works today are clear. Instead of being fine-tuned using data from actual system performance, the size estimates depend on static rules - like a set number of processor cores for every thousand users or memory tied to each chunk of traffic flow. Real systems often behave differently because equipment from different makers, extra processing loads from software layers, or network design choices can shift those numbers quite a bit.
+Right now, only certain fixed server setups work in the hardware repo. When different systems get added, newer gear like 
+SmartNICs
+ or DPUs needs to show up too. Updates have to keep pace - otherwise, advice on sizing could fall behind. If profiles aren’t handled carefully, old data sticks around too long. Matching real-world changes means constant adjustments are needed.
+Right now, the guardrail rules handle only certain architecture limits - things like matching system designs and how big a cluster can be. Instead of covering more intricate checks, it skips over aspects like PCIe speed needs for fast networking gear. Things such as NUMA layout restrictions or power and heat across several racks still aren’t included either. Including those factors later could make setup predictions far more reliable. Even though the chat-style control works, it runs through an outside OpenAI service. That means delays, expenses, and reliance on something beyond internal systems when used often.
+7
+.3 FUTURE SCOPE
+One path forward opens up when gaps in today’s setup meet tomorrow’s network needs. Where the present model falls short, smarter blocks might plug in later. Not every fix is built yet - some grow out of real-world use. New demands in company networks push 
+where
+ upgrades land next. Room to stretch appears each time engineers test its edges.
+Right now, tweaking the sizing numbers using actual workload data stands out as a clear next step. Instead of sticking to rigid multipliers, live information pulled from running systems might shape how resources get estimated. As operational measurements flow back into the calculation core, adjustments happen naturally. Over time, advice grows sharper because it learns from what infrastructure actually does. This shift turns static capacity checks into an ongoing process that evolves alongside real usage patterns.
+One big upgrade means stretching the guardrail checks to include more design limits. Instead of stopping at basics, it might soon test if PCIe generations match up well for fast network cards. For heavy memory tasks, aligning with NUMA nodes could become part of the scan. Dense racks packed tight? Then watching heat levels and power load per space unit may get added too. With these layers in place, the tool begins acting much like a seasoned architect scanning for what will truly work.
+One thing it could do later? Save money smarter. Right now, the setup figures out how few machines are needed for the work, yet skips checking what each machine option 
+costs. Add a budget-aware part - tracking purchase price, software fees, lighting bills - and suddenly choices get sharper. Not only will things run properly, they’ll make more sense on paper too.
+More types of tasks will be supported later. Right 
+now
+ it handles 5G control functions along with user traffic that demands high volume processing. Down the line, estimating resources for AI inference clusters might come into play - so too could setups for 
+analyzing
+ large datasets or running modern cloud-based network services. Each one follows its own method for calculating needs, fitting inside the current flexible framework. Because the task-handling part uses a plug-in style structure, adding new kinds stays simple. Core rules for scaling and checking stay untouched.
+A switch happens when live data feeds connect - Kubernetes, OpenStack, even custom network managers start talking directly to 
+BoQ
+-Calc. Instead of sitting on plans, it wakes up, watching actual usage across servers and stacks. As load shifts, the system nudges decisions, suggesting scale-ups or trims before bottlenecks hit. Planning fades into background; real-time response takes hold. Capacity stops being a forecast. It becomes something the system lives inside.
