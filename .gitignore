@@ -10,9 +10,9 @@ node_modules/
 
 # Scratch & Temporary
 scratch/
-core_backend/scratch/
-backend/scratch/
-live/backend/scratch/
+core_/backend/scratch/
+/backend/scratch/
+live//backend/scratch/
 
 # Uploads
 uploads/
@@ -21,4 +21,5 @@ uploads/
 .DS_Store
 
 # Untracked backend leftover
-backend/
+/backend/
+
