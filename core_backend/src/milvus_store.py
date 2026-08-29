@@ -13,7 +13,7 @@ from .config import (
     EMBEDDING_DIM,
 )
 
-from pymilvus import MilvusClient, DataType
+from pymilvus import MilvusClient, DataType, Function, FunctionType, AnnSearchRequest, RRFRanker
 
 print("milvus_store import started")
 
@@ -64,11 +64,25 @@ class MilvusStore:
         
         if collection_name == self.collection_name:
             # Custom Scalar Fields for document chunks
+            schema.add_field(field_name="organization_id", datatype=DataType.VARCHAR, max_length=64, is_partition_key=True)
             schema.add_field(field_name="document_id", datatype=DataType.INT64)
             schema.add_field(field_name="chunk_index", datatype=DataType.INT64)
-            schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=65535)
+            # Enable analyzer for native BM25
+            schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=65535, enable_analyzer=True)
+            schema.add_field(field_name="is_current", datatype=DataType.BOOL, default_value=True)
+            
+            # Add sparse vector field for BM25
+            schema.add_field(field_name="sparse_vector", datatype=DataType.SPARSE_FLOAT_VECTOR)
+            # Add server-side BM25 function
+            schema.add_function(Function(
+                name="bm25",
+                function_type=FunctionType.BM25,
+                input_field_names=["content"],
+                output_field_names=["sparse_vector"]
+            ))
         else:
             # Custom Scalar Fields for categorical summaries
+            schema.add_field(field_name="organization_id", datatype=DataType.VARCHAR, max_length=64, is_partition_key=True)
             schema.add_field(field_name="category_name", datatype=DataType.VARCHAR, max_length=255)
             schema.add_field(field_name="summary", datatype=DataType.VARCHAR, max_length=65535)
             schema.add_field(field_name="group_id", datatype=DataType.INT64, nullable=True)
@@ -95,6 +109,15 @@ class MilvusStore:
             field_name="vector",
             **idx_params
         )
+        
+        if collection_name == self.collection_name:
+            # Add sparse index for BM25
+            index_params.add_index(
+                field_name="sparse_vector",
+                index_type="SPARSE_INVERTED_INDEX",
+                metric_type="BM25"
+            )
+
         client.create_index(
             collection_name=collection_name,
             index_params=index_params
@@ -115,7 +138,7 @@ class MilvusStore:
         client.load_collection(collection_name=self.category_collection_name)
         print(f"ALL COLLECTIONS ENSURED & LOADED")
 
-    def upsert_chunks(self, document_id: int, chunks: list[str], embeddings: list[list[float]]) -> list[int]:
+    def upsert_chunks(self, document_id: int, chunks: list[str], embeddings: list[list[float]], organization_id: str = "org_default") -> list[int]:
         self.ensure_collection()
         client = self._get_client()
 
@@ -124,9 +147,11 @@ class MilvusStore:
             {
                 "id": int(base_id + idx),
                 "vector": embeddings[idx],
+                "organization_id": organization_id,
                 "document_id": document_id,
                 "chunk_index": idx,
                 "content": chunks[idx],
+                "is_current": True,
             }
             for idx in range(len(chunks))
         ]
@@ -140,49 +165,67 @@ class MilvusStore:
         print(result)
 
         # Flush pushes the in-memory growing segment to sealed segments.
-        # Without this, Attu's Data Explorer shows 'No data found' because
-        # it only reads sealed (persisted) segments, not the write buffer.
-        # Python client.query() reads both, which is why queries worked but
-        # Attu showed nothing.
         client.flush(collection_name=self.collection_name)
         print(f"FLUSHED {len(chunks)} CHUNKS TO MILVUS")
 
         return [int(i) for i in result.get("ids", [])]
 
-    def search(self, query_embedding: list[float], top_k: int = 5, document_id: int | None = None, document_ids: list[int] | None = None) -> list[dict[str, Any]]:
+    def search(self, query_text: str, query_embedding: list[float], top_k: int = 5, document_id: int | None = None, document_ids: list[int] | None = None, organization_id: str = "org_default") -> list[dict[str, Any]]:
         self.ensure_collection()  # also loads the collection
         client = self._get_client()
         ef_value = max(MILVUS_EF_SEARCH, top_k)
-        search_kwargs: dict[str, Any] = {
-            "collection_name": self.collection_name,
-            "data": [query_embedding],
-            "limit": top_k,
-            "output_fields": ["document_id", "chunk_index", "content"],
-            "search_params": {"metric_type": "COSINE", "params": {"ef": ef_value}}
-        }
+        filters = [f"organization_id == '{organization_id}'", "is_current == true"]
         if document_id is not None:
-            search_kwargs["filter"] = f"document_id == {document_id}"
+            filters.append(f"document_id == {document_id}")
         elif document_ids is not None:
             if document_ids:
                 ids_str = ", ".join(str(i) for i in document_ids)
-                search_kwargs["filter"] = f"document_id in [{ids_str}]"
+                filters.append(f"document_id in [{ids_str}]")
             else:
                 return []
 
-        results = client.search(**search_kwargs)
+        filter_expr = " and ".join(filters)
+
+        # Dense search request
+        dense_req = AnnSearchRequest(
+            data=[query_embedding],
+            anns_field="vector",
+            param={"metric_type": "COSINE", "params": {"ef": ef_value}},
+            limit=top_k,
+            expr=filter_expr
+        )
+        
+        # Sparse search request (natively computed via BM25 function)
+        sparse_req = AnnSearchRequest(
+            data=[query_text],
+            anns_field="sparse_vector",
+            param={"metric_type": "BM25"},
+            limit=top_k,
+            expr=filter_expr
+        )
+        
+        # Hybrid Search with RRFRanker
+        results = client.hybrid_search(
+            collection_name=self.collection_name,
+            reqs=[dense_req, sparse_req],
+            ranker=RRFRanker(k=60),
+            limit=top_k,
+            output_fields=["document_id", "chunk_index", "content", "organization_id", "is_current"]
+        )
 
         formatted: list[dict[str, Any]] = []
-        for hit in results[0]:
-            entity = hit.get("entity", {})
-            formatted.append(
-                {
-                    "milvus_id": int(hit.get("id")),
-                    "score": float(hit.get("distance", 0.0)),
-                    "document_id": int(entity.get("document_id")),
-                    "chunk_index": int(entity.get("chunk_index")),
-                    "content": str(entity.get("content")),
-                }
-            )
+        if results and results[0]:
+            for hit in results[0]:
+                entity = hit.get("entity", {})
+                formatted.append(
+                    {
+                        "milvus_id": int(hit.get("id")),
+                        "score": float(hit.get("distance", 0.0)),
+                        "document_id": int(entity.get("document_id")),
+                        "chunk_index": int(entity.get("chunk_index")),
+                        "content": str(entity.get("content")),
+                    }
+                )
         return formatted
 
     def delete_document_chunks(self, document_id: int) -> None:

@@ -1,0 +1,24 @@
+# eval_dataset.yaml
+- id: q_001
+  query: "What is the hybrid search fusion algorithm used?"
+  organization_id: "org_default"
+  group_id: "grp_engineering"
+  expected_category: "Engineering Docs"
+  query_type: "semantic"
+  answerable: true
+
+- id: q_002
+  query: "Give me the specifications for JPL-2026."
+  organization_id: "org_default"
+  group_id: "grp_legal"
+  expected_category: "Vendor Contracts"
+  query_type: "exact_id"
+  answerable: true
+
+- id: q_003
+  query: "How do I bake a chocolate cake?"
+  organization_id: "org_default"
+  group_id: "grp_engineering"
+  expected_category: "None"
+  query_type: "unanswerable"
+  answerable: false
