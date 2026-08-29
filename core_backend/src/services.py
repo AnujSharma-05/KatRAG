@@ -330,17 +330,25 @@ async def process_document_task(doc_id: int, filename: str, bypass_llm: bool = F
         doc.status = "processing"
         db.commit()
 
-        text = _extract_text_from_pdf(doc.file_path)
-        if not text:
+        from .chunking_engine import extract_blocks_from_pdf, chunk_structural_blocks
+        from .enrichment_engine import enrich_chunks_with_context
+        
+        blocks = extract_blocks_from_pdf(doc.file_path)
+        if not blocks:
             doc.status = "failed"
             db.commit()
             return
 
-        chunks = _chunk_text(text)
-        if not chunks:
+        structured_chunks = chunk_structural_blocks(blocks, bypass_llm=bypass_llm)
+        if not structured_chunks:
             doc.status = "failed"
             db.commit()
             return
+            
+        # Apply contextual enrichment (gated behind bypass_llm)
+        # Note: We need full_document_text for the LLM. In a real scenario, we could extract it from blocks.
+        full_text_approx = "\n".join([b["text"] for b in blocks if "text" in b])
+        structured_chunks = enrich_chunks_with_context(full_text_approx, structured_chunks, bypass_llm=bypass_llm)
 
         # --- Dynamic Automated Categorization ---
         is_general_only = len(doc.categories) == 1 and doc.categories[0].name == "general"
@@ -351,7 +359,8 @@ async def process_document_task(doc_id: int, filename: str, bypass_llm: bool = F
             
             resolved_category_name = "general"
             # 1. Try vector-based matching against existing summaries
-            first_chunk_vector = _embed_query(summary_context_text[:1000] if summary_context_text else chunks[0])
+            first_chunk_text = structured_chunks[0]["text"] if structured_chunks else ""
+            first_chunk_vector = _embed_query(summary_context_text[:1000] if summary_context_text else first_chunk_text)
             try:
                 matches = milvus_store.search_categories(first_chunk_vector, top_k=1, group_id=doc.group_id)
                 if matches and matches[0]["score"] >= 0.60:
@@ -401,22 +410,63 @@ async def process_document_task(doc_id: int, filename: str, bypass_llm: bool = F
                 doc.categories.append(db_category)
             db.commit()
 
-        embeddings = _embed_texts(chunks)
-
-        milvus_ids = milvus_store.upsert_chunks(document_id=doc_id, chunks=chunks, embeddings=embeddings)
-
+        # Parent-Child Insertion Logic
+        # We embed and insert ONLY the children into Milvus.
+        # We store both Parents and Children in PostgreSQL.
         db.query(models.DocumentChunk).filter(models.DocumentChunk.document_id == doc_id).delete()
-        db.bulk_save_objects(
-            [
-                models.DocumentChunk(
-                    document_id=doc_id,
-                    chunk_index=index,
-                    content=chunk,
-                    milvus_id=str(milvus_ids[index]) if index < len(milvus_ids) else None,
-                )
-                for index, chunk in enumerate(chunks)
-            ]
+        
+        child_texts_to_embed = []
+        child_refs = [] # Keep track of which parent this child belongs to
+        
+        for parent_idx, p_chunk in enumerate(structured_chunks):
+            # Save Parent to DB
+            parent_db = models.DocumentChunk(
+                document_id=doc_id,
+                chunk_index=parent_idx * 1000, # space out indices
+                content=p_chunk["text"],
+                context_prefix=p_chunk.get("context_prefix", ""),
+                page_from=p_chunk["page_from"],
+                section_path=p_chunk["section_path"]
+            )
+            db.add(parent_db)
+            db.flush() # get parent_db.id
+            
+            for child_idx, child_text in enumerate(p_chunk["children"]):
+                c_prefix = p_chunk.get("child_contexts", [""] * len(p_chunk["children"]))[child_idx]
+                # We embed the prefix + the content
+                child_texts_to_embed.append(c_prefix + "\n" + child_text if c_prefix else child_text)
+                child_refs.append({
+                    "parent_id": parent_db.id,
+                    "chunk_index": parent_idx * 1000 + child_idx + 1,
+                    "page_from": p_chunk["page_from"],
+                    "section_path": p_chunk["section_path"],
+                    "text": child_text,
+                    "context_prefix": c_prefix
+                })
+
+        embeddings = _embed_texts(child_texts_to_embed)
+        
+        # Insert children into Milvus
+        milvus_ids = milvus_store.upsert_chunks(
+            document_id=doc_id, 
+            chunks=child_texts_to_embed, 
+            embeddings=embeddings,
+            organization_id=doc.organization_id if doc.organization_id else "org_default"
         )
+        
+        # Save children to DB with Milvus IDs and parent_chunk_id
+        for i, ref in enumerate(child_refs):
+            child_db = models.DocumentChunk(
+                document_id=doc_id,
+                chunk_index=ref["chunk_index"],
+                content=ref["text"],
+                context_prefix=ref["context_prefix"],
+                milvus_id=str(milvus_ids[i]) if i < len(milvus_ids) else None,
+                parent_chunk_id=ref["parent_id"],
+                page_from=ref["page_from"],
+                section_path=ref["section_path"]
+            )
+            db.add(child_db)
 
         doc.status = "ready"
         db.commit()
