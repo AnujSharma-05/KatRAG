@@ -13,7 +13,7 @@ from .config import (
     EMBEDDING_DIM,
 )
 
-from pymilvus import MilvusClient, DataType
+from pymilvus import MilvusClient, DataType, Function, FunctionType, AnnSearchRequest, RRFRanker
 
 print("milvus_store import started")
 
@@ -67,8 +67,19 @@ class MilvusStore:
             schema.add_field(field_name="organization_id", datatype=DataType.VARCHAR, max_length=64, is_partition_key=True)
             schema.add_field(field_name="document_id", datatype=DataType.INT64)
             schema.add_field(field_name="chunk_index", datatype=DataType.INT64)
-            schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=65535)
+            # Enable analyzer for native BM25
+            schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=65535, enable_analyzer=True)
             schema.add_field(field_name="is_current", datatype=DataType.BOOL, default_value=True)
+            
+            # Add sparse vector field for BM25
+            schema.add_field(field_name="sparse_vector", datatype=DataType.SPARSE_FLOAT_VECTOR)
+            # Add server-side BM25 function
+            schema.add_function(Function(
+                name="bm25",
+                function_type=FunctionType.BM25,
+                input_field_names=["content"],
+                output_field_names=["sparse_vector"]
+            ))
         else:
             # Custom Scalar Fields for categorical summaries
             schema.add_field(field_name="organization_id", datatype=DataType.VARCHAR, max_length=64, is_partition_key=True)
@@ -94,10 +105,24 @@ class MilvusStore:
         else:
             idx_params["index_type"] = "AUTOINDEX"
             
-        index_params.add_index(
-            field_name="vector",
-            **idx_params
-        )
+            index_params.add_index(
+                field_name="vector",
+                **idx_params
+            )
+            
+            # Add sparse index for BM25
+            index_params.add_index(
+                field_name="sparse_vector",
+                index_type="SPARSE_INVERTED_INDEX",
+                metric_type="BM25"
+            )
+            
+        else:
+            index_params.add_index(
+                field_name="vector",
+                **idx_params
+            )
+
         client.create_index(
             collection_name=collection_name,
             index_params=index_params
@@ -150,17 +175,10 @@ class MilvusStore:
 
         return [int(i) for i in result.get("ids", [])]
 
-    def search(self, query_embedding: list[float], top_k: int = 5, document_id: int | None = None, document_ids: list[int] | None = None, organization_id: str = "org_default") -> list[dict[str, Any]]:
+    def search(self, query_text: str, query_embedding: list[float], top_k: int = 5, document_id: int | None = None, document_ids: list[int] | None = None, organization_id: str = "org_default") -> list[dict[str, Any]]:
         self.ensure_collection()  # also loads the collection
         client = self._get_client()
-        search_kwargs: dict[str, Any] = {
-            "collection_name": self.collection_name,
-            "data": [query_embedding],
-            "limit": top_k,
-            "output_fields": ["document_id", "chunk_index", "content", "organization_id", "is_current"],
-            "search_params": {"metric_type": "COSINE", "params": {"ef": MILVUS_EF_SEARCH}}
-        }
-
+        
         filters = [f"organization_id == '{organization_id}'", "is_current == true"]
         if document_id is not None:
             filters.append(f"document_id == {document_id}")
@@ -171,9 +189,34 @@ class MilvusStore:
             else:
                 return []
 
-        search_kwargs["filter"] = " and ".join(filters)
+        filter_expr = " and ".join(filters)
 
-        results = client.search(**search_kwargs)
+        # Dense search request
+        dense_req = AnnSearchRequest(
+            data=[query_embedding],
+            anns_field="vector",
+            param={"metric_type": "COSINE", "params": {"ef": MILVUS_EF_SEARCH}},
+            limit=top_k,
+            expr=filter_expr
+        )
+        
+        # Sparse search request (natively computed via BM25 function)
+        sparse_req = AnnSearchRequest(
+            data=[query_text],
+            anns_field="sparse_vector",
+            param={"metric_type": "BM25"},
+            limit=top_k,
+            expr=filter_expr
+        )
+        
+        # Hybrid Search with RRFRanker
+        results = client.hybrid_search(
+            collection_name=self.collection_name,
+            reqs=[dense_req, sparse_req],
+            ranker=RRFRanker(k=60),
+            limit=top_k,
+            output_fields=["document_id", "chunk_index", "content", "organization_id", "is_current"]
+        )
 
         formatted: list[dict[str, Any]] = []
         if results and results[0]:
