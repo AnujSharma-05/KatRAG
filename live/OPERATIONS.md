@@ -59,8 +59,8 @@ They also share the **same Python virtual environment** (`backend/venv/`).
 ### Step 1: Clone the repo
 
 ```powershell
-git clone https://github.com/AnujSharma-05/CaRAG.git
-cd CaRAG
+git clone https://github.com/AnujSharma-05/CategoRAG.git
+cd CategoRAG
 ```
 
 ---

@@ -384,7 +384,7 @@
             <!-- Scoped Docs -->
             <div class="section-box">
                 <h3>4. Group-Scoped Ingestion (POST / GET / DELETE)</h3>
-                <form id="docUploadForm" onsubmit="handleDocUpload(event)">
+                <form id="docUploadForm">
                     <div class="form-row" style="margin-bottom: 0.5rem;">
                         <label>Select PDF Document</label>
                         <input type="file" id="groupFile" accept="application/pdf" required style="color: var(--text-secondary); font-size: 0.8125rem;">
@@ -404,7 +404,7 @@
                         </label>
                     </div>
                     <div class="btn-group">
-                        <button type="submit" class="btn-primary">Upload Doc to Group</button>
+                        <button type="button" class="btn-primary" onclick="handleDocUpload(event)">Upload Doc to Group</button>
                         <button type="button" class="btn-sec" onclick="listGroupDocs()">List Group Docs</button>
                         <button type="button" class="btn-sec" onclick="callApi(`/groups/${activeGroupId}/categories`, 'GET')">List Group Categories</button>
                         <button type="button" class="btn-sec" onclick="listGroupCategoriesWithDocs()">List Categories & Summaries</button>
@@ -453,7 +453,7 @@
                         <label>Top-K Results Limit</label>
                         <input type="number" id="chatTopK" value="5" min="1" max="100">
                     </div>
-                    <button type="submit" class="btn-primary" style="width: 100%;">Execute Scoped Chat</button>
+                    <button type="button" class="btn-primary" style="width: 100%;" onclick="handleGroupChat(event)">Execute Scoped Chat</button>
                 </form>
             </div>
 
@@ -515,11 +515,16 @@
                         
                         subgraph CoreAPI_Sub ["Core CaRAG Engine"]
                             LLMClass["LLM Classification Service"]
-                            MilvusConn["Milvus Store Client"]
+                            MilvusConn["Milvus HNSW Vector Store"]
+                            BM25Conn["BM25 Lexical Store"]
+                            Reranker["Cross-Encoder Reranker & Confidence Gate"]
                         end
                         
-                        CoreAPI -->|"Vector Searches"| Milvus[("Milvus Vector DB")]
-                        CoreAPI -->|"Consolidated Context"| Gemini["Google Gemini API"]
+                        CoreAPI -->|"Dense Search"| MilvusConn
+                        CoreAPI -->|"Sparse Search"| BM25Conn
+                        MilvusConn --> Reranker
+                        BM25Conn --> Reranker
+                        Reranker -->|"Consolidated Top-K Context"| Gemini["Google Gemini API"]
 
                         style Client fill:#0c1612,stroke:#10b981,stroke-width:2px;
                         style LiveAPI fill:#152720,stroke:#10b981,stroke-width:2px;

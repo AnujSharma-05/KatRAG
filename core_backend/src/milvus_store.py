@@ -173,7 +173,7 @@ class MilvusStore:
     def search(self, query_text: str, query_embedding: list[float], top_k: int = 5, document_id: int | None = None, document_ids: list[int] | None = None, organization_id: str = "org_default") -> list[dict[str, Any]]:
         self.ensure_collection()  # also loads the collection
         client = self._get_client()
-        
+        ef_value = max(MILVUS_EF_SEARCH, top_k)
         filters = [f"organization_id == '{organization_id}'", "is_current == true"]
         if document_id is not None:
             filters.append(f"document_id == {document_id}")
@@ -190,7 +190,7 @@ class MilvusStore:
         dense_req = AnnSearchRequest(
             data=[query_embedding],
             anns_field="vector",
-            param={"metric_type": "COSINE", "params": {"ef": MILVUS_EF_SEARCH}},
+            param={"metric_type": "COSINE", "params": {"ef": ef_value}},
             limit=top_k,
             expr=filter_expr
         )
@@ -276,12 +276,13 @@ class MilvusStore:
     def search_categories(self, query_embedding: list[float], top_k: int = 5, group_id: int | None = None) -> list[dict[str, Any]]:
         self.ensure_collection()
         client = self._get_client()
+        ef_value = max(MILVUS_EF_SEARCH, top_k)
         search_kwargs: dict[str, Any] = {
             "collection_name": self.category_collection_name,
             "data": [query_embedding],
             "limit": top_k,
             "output_fields": ["category_name", "summary", "group_id"],
-            "search_params": {"metric_type": "COSINE", "params": {"ef": MILVUS_EF_SEARCH}}
+            "search_params": {"metric_type": "COSINE", "params": {"ef": ef_value}}
         }
         
         if group_id is not None:

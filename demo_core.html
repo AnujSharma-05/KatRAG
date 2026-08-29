@@ -446,7 +446,9 @@
                         participant FastAPI Server
                         participant PostgreSQL
                         participant Background Task
-                        participant Milvus Vector DB
+                        participant Milvus HNSW Vector DB
+                        participant BM25 Lexical DB
+                        participant CrossEncoder Reranker
                         participant Google Gemini
 
                         User->>FastAPI Server: "POST /upload (PDF, optional category)"
@@ -498,19 +500,24 @@
                             end
                         else No Filters (Two-Stage Routing Flow)
                             FastAPI Server->>Milvus Vector DB: "Search categorical_chunks (Stage 1)"
-                            alt Top Category Score < 0.35
-                                rect rgba(255, 200, 0, 0.1)
-                                Note over FastAPI Server: Confidence Fallback
-                                FastAPI Server->>Milvus Vector DB: "Global search document_chunks (no filters)"
-                                end
-                            else Top Category Score >= 0.35
-                                FastAPI Server->>Google Gemini: "classify_query_category (Gemini Call 1)"
-                                Google Gemini-->>FastAPI Server: "Return targeted category"
-                                FastAPI Server->>PostgreSQL: "Query document IDs under category"
-                                FastAPI Server->>Milvus Vector DB: "Search document_chunks (filtered by doc IDs)"
-                            end
+                            alt category provided (Mode B)
+                            FastAPI Server->>Milvus HNSW Vector DB: "Search (Filter by category_doc_ids)"
+                            FastAPI Server->>BM25 Lexical DB: "Search (Filter by category_doc_ids)"
+                        else No category (Mode C - 2-Stage)
+                            FastAPI Server->>Milvus HNSW Vector DB: "Search category embeddings"
+                            FastAPI Server->>Google Gemini: "Route query to matched categories"
+                            Google Gemini-->>FastAPI Server: "Resolved query category"
+                            FastAPI Server->>Milvus HNSW Vector DB: "Search (Filter by resolved_category doc_ids)"
+                            FastAPI Server->>BM25 Lexical DB: "Search (Filter by resolved_category doc_ids)"
+                        end
+                        FastAPI Server->>FastAPI Server: "Reciprocal Rank Fusion (Milvus + BM25 hits)"
+                        FastAPI Server->>CrossEncoder Reranker: "Re-score fused hits (predict cross-score)"
+                        
+                        alt Top Cross-Score < Threshold
+                            FastAPI Server-->>User: "Return 'I could not find sufficiently relevant information'"
                         end
 
+                        FastAPI Server->>Google Gemini: "generate_answer(question, Reranked top_k context)"
                         Milvus Vector DB-->>FastAPI Server: "Return highly relevant chunks"
                         FastAPI Server->>Google Gemini: "Send context chunks + question (Gemini Call 2)"
                         Google Gemini-->>FastAPI Server: "Formulate grounded answer"
