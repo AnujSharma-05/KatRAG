@@ -105,22 +105,17 @@ class MilvusStore:
         else:
             idx_params["index_type"] = "AUTOINDEX"
             
-            index_params.add_index(
-                field_name="vector",
-                **idx_params
-            )
-            
+        index_params.add_index(
+            field_name="vector",
+            **idx_params
+        )
+        
+        if collection_name == self.collection_name:
             # Add sparse index for BM25
             index_params.add_index(
                 field_name="sparse_vector",
                 index_type="SPARSE_INVERTED_INDEX",
                 metric_type="BM25"
-            )
-            
-        else:
-            index_params.add_index(
-                field_name="vector",
-                **idx_params
             )
 
         client.create_index(
