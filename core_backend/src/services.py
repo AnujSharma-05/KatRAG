@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from . import models
 from .database import sessionLocal
 from .milvus_store import milvus_store
-from .bm25_store import bm25_store
 
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
@@ -491,204 +490,184 @@ async def process_document_task(doc_id: int, filename: str, bypass_llm: bool = F
         db.close()
 
 
+
+import math
+
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))
+
 async def answer_question(question: str, document_id: int | None = None, category: str | None = None, top_k: int = 5, bypass_llm: bool = False) -> dict[str, Any]:
-    """Retrieve relevant chunks from Milvus and build a grounded response payload using hierarchical clustering."""
+    """Retrieve relevant chunks from Milvus and build a grounded response payload."""
     db: Session = sessionLocal()
     try:
         ready_count = db.query(models.Document).filter(models.Document.status == "ready").count()
         if ready_count == 0:
             processing_count = db.query(models.Document).filter(models.Document.status.in_(["uploaded", "processing"])).count()
             if processing_count > 0:
-                return {
-                    "answer": "Your documents are currently being processed. Please wait a moment and try again.",
-                    "citations": []
-                }
-            return {
-                "answer": "No documents are available in the system. Please ingest some PDFs before starting the chat.",
-                "citations": []
-            }
+                return {"answer": "Your documents are currently being processed. Please wait a moment.", "citations": [], "gate_decision": "REFUSE"}
+            return {"answer": "No documents are available in the system.", "citations": [], "gate_decision": "REFUSE"}
         
         query_vector = _embed_query(question)
         hits = []
 
-        # 1. Bypass check - Specific Document ID Filter
+        # 1. Specific Document ID Filter
         if document_id is not None:
             doc = db.query(models.Document).filter(models.Document.id == document_id).first()
-            if not doc:
-                return {
-                    "answer": "The selected document does not exist.",
-                    "citations": []
-                }
-            if doc.status != "ready":
-                return {
-                    "answer": f"The selected document is not ready yet (current status: {doc.status}).",
-                    "citations": []
-                }
+            if not doc or doc.status != "ready":
+                return {"answer": "Document not ready or does not exist.", "citations": [], "gate_decision": "REFUSE"}
+            
             search_k = max(15, top_k * 3)
-            milvus_hits = milvus_store.search(query_embedding=query_vector, top_k=search_k, document_id=document_id)
-            bm25_hits = bm25_store.search(query=question, top_k=search_k, document_id=document_id)
-            hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
+            hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, document_id=document_id)
 
-        # 2. Bypass check - Specific Category Filter
+        # 2. Specific Category Filter
         elif category is not None:
             doc_ids_query = db.query(models.Document.id).join(models.Document.categories).filter(
-                models.Category.name == category,
-                models.Document.status == "ready"
+                models.Category.name == category, models.Document.status == "ready"
             ).all()
             doc_ids = [r[0] for r in doc_ids_query]
-            search_k = max(15, top_k * 3)
             if doc_ids:
-                milvus_hits = milvus_store.search(query_embedding=query_vector, top_k=search_k, document_ids=doc_ids)
-                bm25_hits = bm25_store.search(query=question, top_k=search_k, document_ids=doc_ids)
-                hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-            else:
-                hits = []
+                search_k = max(15, top_k * 3)
+                hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, document_ids=doc_ids)
 
-        # 3. Two-Stage Routing Flow (No active manual filter)
+        # 3. Soft Multi-Category Routing (Issue 7)
         else:
-            # Stage 1: Categorical Triage
             try:
-                matches = milvus_store.search_categories(query_vector, top_k=5)
+                matches = milvus_store.search_categories(query_vector, top_k=3)
             except Exception as exc:
                 print("Milvus search_categories failed:", exc)
                 matches = []
 
-            search_k = max(15, top_k * 3)
-            # Confidence-Score Fallback (or if no category summaries exist)
-            if not matches or matches[0]["score"] < 0.35:
-                print(f"Bypassing categorical routing (Top score: {matches[0]['score'] if matches else 'None'} < 0.35). Global search initiated.")
-                milvus_hits = milvus_store.search(query_embedding=query_vector, top_k=search_k)
-                bm25_hits = bm25_store.search(query=question, top_k=search_k)
-                hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
+            if not matches or matches[0]["score"] < 0.4:
+                print("Router confidence low, skipping category filter. Global search initiated.")
+                search_k = max(15, top_k * 3)
+                hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k)
             else:
-                # LLM Routing (LLM Call 1)
-                from . import llm_service
-                try:
-                    if bypass_llm:
-                        raise Exception("Bypassing LLM routing voluntarily")
-                    chosen_category = await llm_service.classify_query_category(
-                        question=question,
-                        category_candidates=matches
-                    )
-                    print(f"LLM 1 classified query to category: '{chosen_category}' (Matches were: {[m['category_name'] for m in matches]})")
-                except Exception as exc:
-                    print("LLM query classification failed, falling back to top matched category:", exc)
-                    chosen_category = matches[0]["category_name"]
-
-                # Ensure chosen category exists in candidates, fallback if not
-                candidate_names = [m["category_name"] for m in matches]
-                if chosen_category not in candidate_names:
-                    print(f"Chosen category '{chosen_category}' not in candidate list. Falling back to top match: '{matches[0]['category_name']}'")
-                    chosen_category = matches[0]["category_name"]
-
-                # Stage 2: Main Search (Relational Filter)
+                top_cats = [m["category_name"] for m in matches]
+                print(f"Soft Routing to Top-3 categories: {top_cats}")
+                
                 doc_ids_query = db.query(models.Document.id).join(models.Document.categories).filter(
-                    models.Category.name == chosen_category,
-                    models.Document.status == "ready"
+                    models.Category.name.in_(top_cats), models.Document.status == "ready"
                 ).all()
                 doc_ids = [r[0] for r in doc_ids_query]
+                
+                routed_hits = []
                 if doc_ids:
-                    milvus_hits = milvus_store.search(query_embedding=query_vector, top_k=search_k, document_ids=doc_ids)
-                    bm25_hits = bm25_store.search(query=question, top_k=search_k, document_ids=doc_ids)
-                    hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-                else:
-                    # In case documents in chosen category are not found/ready, fallback to global
-                    print(f"No documents ready in category '{chosen_category}'. Bypassing category filter.")
-                    milvus_hits = milvus_store.search(query_embedding=query_vector, top_k=search_k)
-                    bm25_hits = bm25_store.search(query=question, top_k=search_k)
-                    hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
+                    routed_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=80, document_ids=doc_ids)
+                
+                global_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=40)
+                
+                # Merge and apply 1.25x boost to routed hits
+                hit_map = {}
+                for hit in global_hits:
+                    key = f"{hit['document_id']}_{hit['chunk_index']}"
+                    hit_map[key] = hit
+                
+                for hit in routed_hits:
+                    key = f"{hit['document_id']}_{hit['chunk_index']}"
+                    hit["score"] = hit["score"] * 1.25 # Apply 1.25x boost
+                    if key not in hit_map or hit["score"] > hit_map[key]["score"]:
+                        hit_map[key] = hit
+                        
+                hits = list(hit_map.values())
+                hits.sort(key=lambda x: x["score"], reverse=True)
+                hits = hits[:max(15, top_k * 3)]
 
     finally:
         db.close()
 
     if not hits:
-        return {
-            "answer": "The provided documents do not contain sufficient information to answer this question.",
-            "citations": [],
-        }
+        return {"answer": "The provided documents do not contain sufficient information.", "citations": [], "gate_decision": "REFUSE"}
 
     # =========================================================================
-    # STAGE 2: CROSS-ENCODER RERANKING
+    # STAGE 2: CROSS-ENCODER RERANKING & CONFIDENCE GATE (Issue 8)
     # =========================================================================
-    print(f"\n[RERANKING] Scoring {len(hits)} initial hybrid hits...")
-    
-    # 1. Prepare pairs of (query, chunk_content)
+    print(f"
+[RERANKING] Scoring {len(hits)} hits...")
     cross_input = [[question, hit["content"]] for hit in hits]
-    
-    # 2. Score them all jointly
     scores = CROSS_ENCODER_INSTANCE.predict(cross_input)
     
-    # 3. Update the hits with the new score
     for idx, hit in enumerate(hits):
         hit["cross_score"] = float(scores[idx])
+        # Platt scaling approximation (sigmoid)
+        hit["prob_relevant"] = sigmoid(hit["cross_score"])
         
-    # 4. Sort descending by the cross-encoder score
-    hits.sort(key=lambda x: x["cross_score"], reverse=True)
-    
-    # 5. Take top-k
+    hits.sort(key=lambda x: x["prob_relevant"], reverse=True)
     hits = hits[:top_k]
 
-    # === METRICS LOGGING & CONFIDENCE GATE ===
-    gate_triggered = False
-    top_score = hits[0]["cross_score"] if hits else -999.0
-    score_gap = (hits[0]["cross_score"] - hits[1]["cross_score"]) if len(hits) > 1 else 0.0
+    top_prob = hits[0]["prob_relevant"] if hits else 0.0
+    gate_decision = "ANSWER"
+    
+    # 3-Tier Gate
+    if top_prob < 0.35:
+        gate_decision = "REFUSE"
+    elif top_prob < 0.70:
+        gate_decision = "HEDGED"
 
-    if top_score < CROSS_ENCODER_THRESHOLD and CROSS_ENCODER_THRESHOLD != -999.0:
-        gate_triggered = True
-
-    if LOG_RETRIEVAL_SCORES:
-        print(f"\n--- [RETRIEVAL METRICS LOG] ---")
-        print(f"Query: {question}")
-        print(f"Category: {category or (chosen_category if 'chosen_category' in locals() else 'None')}")
-        print(f"Top Cross-Score: {top_score:.4f}")
-        print(f"Score Gap (Top1 - Top2): {score_gap:.4f}")
-        print(f"Final Context Size: {len(hits)} chunks")
-        print(f"Gate Triggered: {gate_triggered} (Threshold: {CROSS_ENCODER_THRESHOLD})")
-        print(f"Action: {'REJECTED' if gate_triggered else 'ACCEPTED'}")
-        print(f"-------------------------------\n")
-
-    if gate_triggered:
+    if gate_decision == "REFUSE":
         return {
             "answer": "I could not find sufficiently relevant information in the uploaded documents to answer this question.",
             "citations": [],
+            "gate_decision": gate_decision
         }
 
-    print("\n========== FINAL RERANKED CHUNKS ==========")
-
-    for idx, hit in enumerate(hits):
-        print(f"\nChunk {idx+1} (Cross-Score: {hit['cross_score']:.4f}, Vector-Score: {hit['score']:.4f})")
-        safe_content = hit["content"][:300].encode('ascii', errors='replace').decode('ascii')
-        print(safe_content)
-
-    print("\n===========================================")
-
-    citations = [
-        {
-            "document_id": hit["document_id"],
-            "chunk_index": hit["chunk_index"],
-            "score": hit["score"],
-            "content_preview": hit["content"][:220],
-        }
-        for hit in hits
-    ]
+    # =========================================================================
+    # STAGE 3: STRUCTURED CITATIONS (Issue 9)
+    # =========================================================================
+    db = sessionLocal()
+    citations = []
+    try:
+        for hit in hits:
+            # Lookup page and section from PostgreSQL
+            chunk_db = db.query(models.DocumentChunk).filter(
+                models.DocumentChunk.document_id == hit["document_id"],
+                models.DocumentChunk.chunk_index == hit["chunk_index"]
+            ).first()
+            
+            page_from = chunk_db.page_from if chunk_db else None
+            section_path = chunk_db.section_path if chunk_db else None
+            
+            # Use parent chunk context if available
+            if chunk_db and chunk_db.parent_chunk_id:
+                parent_db = db.query(models.DocumentChunk).filter(
+                    models.DocumentChunk.id == chunk_db.parent_chunk_id
+                ).first()
+                if parent_db:
+                    hit["content"] = parent_db.content
+            
+            citations.append({
+                "document_id": hit["document_id"],
+                "chunk_id": f"{hit['document_id']}_{hit['chunk_index']}",
+                "page_from": page_from,
+                "section_path": section_path,
+                "score": hit["cross_score"],
+                "prob_relevant": hit["prob_relevant"],
+                "content_preview": hit["content"][:220]
+            })
+    finally:
+        db.close()
 
     context_lines = [
-        f"[Source {idx + 1}] {hit['content']}" for idx, hit in enumerate(hits)
+        f"[Source {idx + 1}] (Page {cit.get('page_from', 'N/A')}, {cit.get('section_path', 'N/A')}): {hit['content']}" 
+        for idx, (cit, hit) in enumerate(zip(citations, hits))
     ]
-    context = "\n\n".join(context_lines)
+    context = "
+
+".join(context_lines)
 
     answer = await generate_answer(
         question=question,
         context=context,
         bypass_llm=bypass_llm,
     )
+    
+    if gate_decision == "HEDGED":
+        answer = "Based on limited available documentation, " + answer
 
     return {
         "answer": answer,
         "citations": citations,
+        "gate_decision": gate_decision
     }
-
-
 async def delete_document_assets(document_id: int, file_path: str | None) -> None:
     """Delete physical file + Milvus vectors for a document."""
     if file_path and os.path.exists(file_path):
