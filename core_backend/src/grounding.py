@@ -1,10 +1,16 @@
+import numpy as np
+from sentence_transformers import CrossEncoder
+
+# Initialize NLI model globally for efficient reuse
+# We use cross-encoder/nli-deberta-v3-small as requested by the architecture.
+nli_model = CrossEncoder('cross-encoder/nli-deberta-v3-small')
+
 def verify_grounding(answer: str, retrieved_context: list[str]) -> float:
     """
-    Scaffold for the Natural Language Inference (NLI) Grounding Verifier.
+    Natural Language Inference (NLI) Grounding Verifier.
 
-    This module will eventually load a fast, local NLI model (e.g., 
-    cross-encoder/nli-deberta-v3-small) to mathematically score whether 
-    the generated nswer is entailed by the etrieved_context.
+    This mathematically scores whether the generated nswer is entailed by 
+    the etrieved_context using a fast, local NLI model.
 
     Why NLI instead of LLM-as-a-judge?
     - Speed: NLI cross-encoders are significantly faster.
@@ -16,8 +22,27 @@ def verify_grounding(answer: str, retrieved_context: list[str]) -> float:
         retrieved_context: A list of context chunks retrieved from the vector store.
         
     Returns:
-        float: A mock grounding score (0.0 to 1.0) indicating entailment confidence.
+        float: A grounding score (0.0 to 1.0) indicating entailment confidence.
     """
-    # TODO: Load sentence-transformers cross-encoder and compute entailment probabilities.
-    # For now, return a mock score so the pipeline doesn't break.
-    return 0.95
+    if not retrieved_context or not answer:
+        return 0.0
+        
+    # Concatenate the retrieved context into a single premise string
+    premise = " ".join(retrieved_context)
+    
+    # NLI model expects [premise, hypothesis]
+    logits = nli_model.predict([premise, answer])
+    
+    # DeBERTa-v3 NLI output logits are typically mapped as:
+    # 0: Contradiction
+    # 1: Entailment
+    # 2: Neutral
+    
+    # Apply softmax to get probabilities
+    exp_scores = np.exp(logits - np.max(logits))
+    probs = exp_scores / np.sum(exp_scores)
+    
+    # Return the probability of Entailment (index 1)
+    entailment_prob = float(probs[1])
+    
+    return entailment_prob
