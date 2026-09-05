@@ -1,6 +1,8 @@
 import asyncio
 import os
-from typing import Any
+from datetime import datetime
+from typing import Any, Optional
+from sqlalchemy import or_
 from .config import EMBEDDING_MODEL, CROSS_ENCODER_MODEL, CROSS_ENCODER_THRESHOLD, LOG_RETRIEVAL_SCORES
 
 from sqlalchemy.orm import Session
@@ -21,6 +23,34 @@ from sqlalchemy import text
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
+
+
+def resolve_active_document_ids(db_session, group_id: int, as_of: Optional[datetime]) -> list[str]:
+    """Resolve document IDs active at a given point in time.
+
+    When as_of is None, returns only documents with is_current=True.
+    When as_of is provided, executes a temporal point-in-time range query:
+        valid_from <= as_of AND (valid_to IS NULL OR valid_to > as_of)
+    """
+    if as_of is None:
+        versions = db_session.query(models.DocumentVersion).join(
+            models.Document, models.Document.id == models.DocumentVersion.document_id
+        ).filter(
+            models.Document.group_id == group_id,
+            models.DocumentVersion.is_current == True
+        ).all()
+    else:
+        versions = db_session.query(models.DocumentVersion).join(
+            models.Document, models.Document.id == models.DocumentVersion.document_id
+        ).filter(
+            models.Document.group_id == group_id,
+            models.DocumentVersion.valid_from <= as_of,
+            or_(
+                models.DocumentVersion.valid_to == None,
+                models.DocumentVersion.valid_to > as_of
+            )
+        ).all()
+    return [str(v.document_id) for v in versions]
 
 
 EMBEDDING_MODEL_INSTANCE = SentenceTransformer(
@@ -659,11 +689,14 @@ async def answer_question(question: str, document_id: int | None = None, categor
     
     if gate_decision == "HEDGED":
         answer = "Based on limited available documentation, " + answer
+        
+    grounding_score = verify_grounding(answer, [hit["content"] for hit in hits])
 
     return {
         "answer": answer,
         "citations": citations,
-        "gate_decision": gate_decision
+        "gate_decision": gate_decision,
+        "grounding_score": grounding_score
     }
 async def delete_document_assets(document_id: int, file_path: str | None) -> None:
     """Delete physical file + Milvus vectors for a document."""
@@ -719,3 +752,7 @@ async def reset_system() -> None:
         print("STEP 7")
 
         db.close()
+
+
+
+

@@ -60,3 +60,9 @@ CHUNK_OVERLAP = int(
         "120"
     )
 )
+# === Kafka and MinIO Configuration ===
+KAFKA_BROKER_URL = os.getenv("KAFKA_BROKER_URL", "localhost:9092")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9002")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME", "katrag-docs")

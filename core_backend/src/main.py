@@ -6,7 +6,7 @@ from . import config
 
 
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile, Form, Header
+from fastapi import Depends, FastAPI, HTTPException, Header
 from sqlalchemy.orm import Session
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,70 +34,6 @@ async def ping():
     print("PING HIT")
     return {"status": "alive"}
 
-
-#----upload document----
-
-@app.post("/upload", response_model=schemas.DocumentResponse)
-async def upload_pdf(
-    background_tasks: BackgroundTasks, #This is a special parameter that allows us to run tasks in the background without blocking the main thread. In this case, we will use it to trigger the document processing task after the file is uploaded.(always kept as the first parameter in the function definition)
-    file: UploadFile = File(...), 
-    category: str | None = Form(None),
-    bypass_llm: bool = Form(False),
-    db: Session = Depends(get_db),
-    x_scope_organization_id: str = Header("org_default"),
-    x_scope_group_ids: str = Header("")
-    ):
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="Invalid file type. Only PDF files are allowed.")
-
-    upload_dir = "uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-
-    file_path = os.path.join(upload_dir, file.filename)
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    file.file.seek(0, os.SEEK_END)
-    file_size = file.file.tell()
-    file.file.seek(0)
-
-    new_doc = Document(
-        filename=file.filename,
-        file_path=file_path,
-        file_size=file_size,
-        status="uploaded",
-        organization_id=x_scope_organization_id
-    )
-
-    db.add(new_doc)
-    db.commit()
-    db.refresh(new_doc)
-
-    # Now associate the category
-    cat_name = category or "general"
-    db_category = db.query(models.Category).filter(
-        models.Category.name == cat_name,
-        models.Category.group_id == None
-    ).first()
-    if not db_category:
-        db_category = models.Category(name=cat_name, group_id=None)
-        db.add(db_category)
-        db.commit()
-        db.refresh(db_category)
-    new_doc.categories.append(db_category)
-    db.commit()
-
-    # Trigger ingestion in background; task creates its own DB session.
-    background_tasks.add_task(services.process_document_task, new_doc.id, file.filename, bypass_llm)
-    
-    return {
-        "id": new_doc.id,
-        "filename": new_doc.filename,
-        "status": new_doc.status,
-        "file_size": new_doc.file_size,
-        "categories": [cat_name]
-    }
 
 #----get all documents----
 
@@ -299,6 +235,7 @@ async def get_categories_with_docs(db: Session = Depends(get_db)):
             "documents": docs_list
         })
     return result
+
 
 
 
