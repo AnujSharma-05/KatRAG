@@ -7,6 +7,7 @@ from minio import Minio
 
 # Local imports
 from . import config, models, services
+from .milvus_store import milvus_store
 from .database import SessionLocal
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -47,7 +48,7 @@ def run_worker():
     topic_in = "doc.uploaded"
     consumer.subscribe([topic_in])
 
-    logger.info(f"Worker started. Subscribed to topic: {topic_in}")
+    logger.info(f"Worker started. Subscribed to topics: {topic_in}, {topic_superseded}")
 
     try:
         while True:
@@ -64,8 +65,19 @@ def run_worker():
             
             # Message payload processing
             try:
+                topic = msg.topic()
                 payload = json.loads(msg.value().decode('utf-8'))
-                logger.info(f"Received message: {payload}")
+                logger.info(f"Received message on {topic}: {payload}")
+                
+                if topic == "doc.superseded":
+                    document_id = payload.get("document_id")
+                    organization_id = payload.get("organization_id")
+                    if document_id and organization_id:
+                        milvus_store.deprecate_document_vectors(document_id, organization_id)
+                        logger.info(f"Logical deprecation successful for document_id {document_id}")
+                    else:
+                        logger.error("Missing document_id or organization_id in doc.superseded payload")
+                    continue
                 
                 document_id = payload.get("document_id")
                 organization_id = payload.get("organization_id")
@@ -150,4 +162,5 @@ def run_worker():
 
 if __name__ == "__main__":
     run_worker()
+
 
