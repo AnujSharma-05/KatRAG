@@ -9,6 +9,7 @@ import (
 	"github.com/AnujSharma-05/KatRAG/live/backend/internal/auth"
 	"github.com/AnujSharma-05/KatRAG/live/backend/internal/storage"
 	"github.com/AnujSharma-05/KatRAG/live/backend/internal/events"
+	"github.com/AnujSharma-05/KatRAG/live/backend/internal/ws"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -40,6 +41,7 @@ func main() {
 	})
 
 	// Ingestion Routes
+	ws.RegisterWSRoute(app)
 	app.Post(/groups/:id/documents, auth.JWTMiddleware, api.UploadDocument)
 
 	// All other routes go through the Gateway Proxy
@@ -48,4 +50,5 @@ func main() {
 	log.Println("Starting Go API Gateway on port 8080 (changed from 3000 due to milvus-attu collision)...")
 	log.Fatal(app.Listen(":8080"))
 }
+
 
