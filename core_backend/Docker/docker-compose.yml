@@ -17,7 +17,9 @@ services:
 
   # 2. FastAPI Application Service
   web:
-    build: .
+    build:
+      context: ..
+      dockerfile: Docker/dockerfile
     container_name: jpl-rag-api
     restart: always
     ports:
@@ -37,3 +39,4 @@ services:
 
 volumes:
   postgres_data:
+

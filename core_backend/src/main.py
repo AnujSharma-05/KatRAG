@@ -6,7 +6,7 @@ from . import config
 
 
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile, Form
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile, Form, Header
 from sqlalchemy.orm import Session
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,7 +43,9 @@ async def upload_pdf(
     file: UploadFile = File(...), 
     category: str | None = Form(None),
     bypass_llm: bool = Form(False),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    x_scope_organization_id: str = Header("org_default"),
+    x_scope_group_ids: str = Header("")
     ):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Invalid file type. Only PDF files are allowed.")
@@ -64,7 +66,8 @@ async def upload_pdf(
         filename=file.filename,
         file_path=file_path,
         file_size=file_size,
-        status="uploaded"
+        status="uploaded",
+        organization_id=x_scope_organization_id
     )
 
     db.add(new_doc)
@@ -177,7 +180,7 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/chat", response_model=schemas.ChatResponse)
-async def chat(payload: schemas.ChatRequest):
+async def chat(payload: schemas.ChatRequest, x_scope_organization_id: str = Header("org_default"), x_scope_group_ids: str = Header("")):
     try:
         return await services.answer_question(
             question=payload.question,
@@ -185,6 +188,7 @@ async def chat(payload: schemas.ChatRequest):
             category=payload.category,
             top_k=payload.top_k,
             bypass_llm=payload.bypass_llm,
+            organization_id=x_scope_organization_id,
         )
     except Exception as exc:
         import traceback
@@ -295,6 +299,8 @@ async def get_categories_with_docs(db: Session = Depends(get_db)):
             "documents": docs_list
         })
     return result
+
+
 
 
 

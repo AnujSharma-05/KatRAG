@@ -12,3 +12,5 @@ transformers==5.9.0
 langchain-text-splitters
 google-generativeai
 rank-bm25
+
+email-validator

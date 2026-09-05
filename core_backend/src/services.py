@@ -496,7 +496,7 @@ import math
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
 
-async def answer_question(question: str, document_id: int | None = None, category: str | None = None, top_k: int = 5, bypass_llm: bool = False) -> dict[str, Any]:
+async def answer_question(question: str, document_id: int | None = None, category: str | None = None, top_k: int = 5, bypass_llm: bool = False, organization_id: str = "org_default") -> dict[str, Any]:
     """Retrieve relevant chunks from Milvus and build a grounded response payload."""
     db: Session = sessionLocal()
     try:
@@ -517,7 +517,7 @@ async def answer_question(question: str, document_id: int | None = None, categor
                 return {"answer": "Document not ready or does not exist.", "citations": [], "gate_decision": "REFUSE"}
             
             search_k = max(15, top_k * 3)
-            hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, document_id=document_id)
+            hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, document_id=document_id, organization_id=organization_id)
 
         # 2. Specific Category Filter
         elif category is not None:
@@ -527,7 +527,7 @@ async def answer_question(question: str, document_id: int | None = None, categor
             doc_ids = [r[0] for r in doc_ids_query]
             if doc_ids:
                 search_k = max(15, top_k * 3)
-                hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, document_ids=doc_ids)
+                hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, document_ids=doc_ids, organization_id=organization_id)
 
         # 3. Soft Multi-Category Routing (Issue 7)
         else:
@@ -540,7 +540,7 @@ async def answer_question(question: str, document_id: int | None = None, categor
             if not matches or matches[0]["score"] < 0.4:
                 print("Router confidence low, skipping category filter. Global search initiated.")
                 search_k = max(15, top_k * 3)
-                hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k)
+                hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, organization_id=organization_id)
             else:
                 top_cats = [m["category_name"] for m in matches]
                 print(f"Soft Routing to Top-3 categories: {top_cats}")
@@ -552,9 +552,9 @@ async def answer_question(question: str, document_id: int | None = None, categor
                 
                 routed_hits = []
                 if doc_ids:
-                    routed_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=80, document_ids=doc_ids)
+                    routed_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=80, document_ids=doc_ids, organization_id=organization_id)
                 
-                global_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=40)
+                global_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=40, organization_id=organization_id)
                 
                 # Merge and apply 1.25x boost to routed hits
                 hit_map = {}
@@ -581,8 +581,7 @@ async def answer_question(question: str, document_id: int | None = None, categor
     # =========================================================================
     # STAGE 2: CROSS-ENCODER RERANKING & CONFIDENCE GATE (Issue 8)
     # =========================================================================
-    print(f"
-[RERANKING] Scoring {len(hits)} hits...")
+    print(f"\n[RERANKING] Scoring {len(hits)} hits...")
     cross_input = [[question, hit["content"]] for hit in hits]
     scores = CROSS_ENCODER_INSTANCE.predict(cross_input)
     
@@ -650,9 +649,7 @@ async def answer_question(question: str, document_id: int | None = None, categor
         f"[Source {idx + 1}] (Page {cit.get('page_from', 'N/A')}, {cit.get('section_path', 'N/A')}): {hit['content']}" 
         for idx, (cit, hit) in enumerate(zip(citations, hits))
     ]
-    context = "
-
-".join(context_lines)
+    context = "\n\n".join(context_lines)
 
     answer = await generate_answer(
         question=question,
