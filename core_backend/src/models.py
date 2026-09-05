@@ -97,7 +97,8 @@ class DocumentVersion(Base):
 
     id = Column(String, primary_key=True, default=lambda: f"ver_{uuid.uuid4().hex[:12]}")
     document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
-    version_no = Column(Integer, nullable=False, default=1)
+    version_num = Column(Integer, nullable=False, default=1)
+    is_current = Column(Boolean, default=True)
     content_hash = Column(String, nullable=True, index=True)
     object_key = Column(String, nullable=True)
     status = Column(String, default="indexed")
@@ -148,4 +149,5 @@ class QueryTrace(Base):
     latency_ms = Column(JSON, nullable=True)
     grounding_score = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
