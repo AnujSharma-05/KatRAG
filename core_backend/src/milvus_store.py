@@ -228,6 +228,41 @@ class MilvusStore:
                 )
         return formatted
 
+    def deprecate_document_vectors(self, document_id: int, organization_id: str) -> None:
+        self.ensure_collection()
+        client = self._get_client()
+        
+        filter_expr = f"document_id == {document_id} and organization_id == '{organization_id}' and is_current == true"
+        res = client.query(
+            collection_name=self.collection_name,
+            filter=filter_expr,
+            output_fields=["id", "vector", "organization_id", "document_id", "chunk_index", "content"]
+        )
+        
+        if not res:
+            print(f"NO ACTIVE VECTORS FOUND FOR DOC {document_id}")
+            return
+            
+        print(f"DEPRECATING {len(res)} VECTORS FOR DOC {document_id}")
+        
+        ids_to_delete = [hit["id"] for hit in res]
+        ids_str = ", ".join(str(i) for i in ids_to_delete)
+        
+        client.delete(
+            collection_name=self.collection_name,
+            filter=f"id in [{ids_str}]"
+        )
+        
+        data = []
+        for hit in res:
+            new_hit = dict(hit)
+            new_hit["is_current"] = False
+            data.append(new_hit)
+            
+        client.insert(collection_name=self.collection_name, data=data)
+        client.flush(collection_name=self.collection_name)
+        print(f"SUCCESSFULLY DEPRECATED {len(data)} VECTORS FOR DOC {document_id}")
+
     def delete_document_chunks(self, document_id: int) -> None:
         self.ensure_collection()
         client = self._get_client()
@@ -332,4 +367,5 @@ print("creating milvus_store singleton")
 milvus_store = MilvusStore()
 
 print("milvus_store singleton created")
+
 
