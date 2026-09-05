@@ -116,12 +116,12 @@ def run_worker():
                             db.commit()
                             
                             # Publish doc.indexed event
-                            event_payload = json.dumps({"document_id": document_id, "status": "indexed"})
+                            event_payload = json.dumps({"document_id": document_id, "status": "indexed", "group_id": doc.group_id})
                             producer.produce("doc.indexed", key=str(organization_id), value=event_payload)
                             logger.info(f"Published doc.indexed for document {document_id}")
                         else:
                             # It failed during processing
-                            event_payload = json.dumps({"document_id": document_id, "status": "failed"})
+                            event_payload = json.dumps({"document_id": document_id, "status": "failed", "group_id": doc.group_id})
                             producer.produce("doc.failed", key=str(organization_id), value=event_payload)
                             logger.error(f"Published doc.failed for document {document_id}")
                             
@@ -129,7 +129,7 @@ def run_worker():
                         doc.status = "failed"
                         db.commit()
                         logger.error(f"Pipeline error: {e}")
-                        event_payload = json.dumps({"document_id": document_id, "status": "failed", "error": str(e)})
+                        event_payload = json.dumps({"document_id": document_id, "status": "failed", "error": str(e), "group_id": doc.group_id})
                         producer.produce("doc.failed", key=str(organization_id), value=event_payload)
                     finally:
                         # Clean up temp file
@@ -150,3 +150,4 @@ def run_worker():
 
 if __name__ == "__main__":
     run_worker()
+
