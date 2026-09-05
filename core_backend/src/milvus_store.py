@@ -170,19 +170,28 @@ class MilvusStore:
 
         return [int(i) for i in result.get("ids", [])]
 
-    def search(self, query_text: str, query_embedding: list[float], top_k: int = 5, document_id: int | None = None, document_ids: list[int] | None = None, organization_id: str = "org_default") -> list[dict[str, Any]]:
+    def search(self, query_text: str, query_embedding: list[float], top_k: int = 5, document_id: int | None = None, document_ids: list[int] | None = None, organization_id: str = "org_default", valid_document_ids: list[str] | None = None, is_temporal: bool = False) -> list[dict[str, Any]]:
         self.ensure_collection()  # also loads the collection
         client = self._get_client()
         ef_value = max(MILVUS_EF_SEARCH, top_k)
-        filters = [f"organization_id == '{organization_id}'", "is_current == true"]
-        if document_id is not None:
-            filters.append(f"document_id == {document_id}")
-        elif document_ids is not None:
-            if document_ids:
-                ids_str = ", ".join(str(i) for i in document_ids)
-                filters.append(f"document_id in [{ids_str}]")
-            else:
+        
+        filters = [f"organization_id == '{organization_id}'"]
+        
+        if is_temporal and valid_document_ids is not None:
+            if not valid_document_ids:
                 return []
+            ids_str = ", ".join(str(i) for i in valid_document_ids)
+            filters.append(f"document_id in [{ids_str}]")
+        else:
+            filters.append("is_current == true")
+            if document_id is not None:
+                filters.append(f"document_id == {document_id}")
+            elif document_ids is not None:
+                if document_ids:
+                    ids_str = ", ".join(str(i) for i in document_ids)
+                    filters.append(f"document_id in [{ids_str}]")
+                else:
+                    return []
 
         filter_expr = " and ".join(filters)
 
@@ -367,5 +376,6 @@ print("creating milvus_store singleton")
 milvus_store = MilvusStore()
 
 print("milvus_store singleton created")
+
 
 
