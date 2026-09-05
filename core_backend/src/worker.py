@@ -1,13 +1,12 @@
 import json
 import logging
-import sys
 import os
-import time
+import asyncio
 from confluent_kafka import Consumer, Producer, KafkaError, KafkaException
 from minio import Minio
 
 # Local imports
-from . import config, models
+from . import config, models, services
 from .database import SessionLocal
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -101,8 +100,42 @@ def run_worker():
                     logger.info(f"Downloading {object_name} from MinIO to {local_file_path}")
                     minio_client.fget_object(config.MINIO_BUCKET_NAME, object_name, local_file_path)
                     
-                    # (Pipeline and Status Events will go here)
+                    # Update doc path to local path temporarily so services.process_document_task can find it
+                    original_file_path = doc.file_path
+                    doc.file_path = local_file_path
+                    db.commit()
                     
+                    # Wire the Processing Pipeline
+                    try:
+                        asyncio.run(services.process_document_task(doc.id, doc.filename, bypass_llm=False))
+                        
+                        # Check status after processing
+                        db.refresh(doc)
+                        if doc.status != "failed":
+                            doc.status = "indexed"
+                            db.commit()
+                            
+                            # Publish doc.indexed event
+                            event_payload = json.dumps({"document_id": document_id, "status": "indexed"})
+                            producer.produce("doc.indexed", key=str(organization_id), value=event_payload)
+                            logger.info(f"Published doc.indexed for document {document_id}")
+                        else:
+                            # It failed during processing
+                            event_payload = json.dumps({"document_id": document_id, "status": "failed"})
+                            producer.produce("doc.failed", key=str(organization_id), value=event_payload)
+                            logger.error(f"Published doc.failed for document {document_id}")
+                            
+                    except Exception as e:
+                        doc.status = "failed"
+                        db.commit()
+                        logger.error(f"Pipeline error: {e}")
+                        event_payload = json.dumps({"document_id": document_id, "status": "failed", "error": str(e)})
+                        producer.produce("doc.failed", key=str(organization_id), value=event_payload)
+                    finally:
+                        # Clean up temp file
+                        if os.path.exists(local_file_path):
+                            os.remove(local_file_path)
+                            
                 finally:
                     db.close()
                 
