@@ -659,11 +659,14 @@ async def answer_question(question: str, document_id: int | None = None, categor
     
     if gate_decision == "HEDGED":
         answer = "Based on limited available documentation, " + answer
+        
+    grounding_score = verify_grounding(answer, [hit["content"] for hit in hits])
 
     return {
         "answer": answer,
         "citations": citations,
-        "gate_decision": gate_decision
+        "gate_decision": gate_decision,
+        "grounding_score": grounding_score
     }
 async def delete_document_assets(document_id: int, file_path: str | None) -> None:
     """Delete physical file + Milvus vectors for a document."""
@@ -719,3 +722,4 @@ async def reset_system() -> None:
         print("STEP 7")
 
         db.close()
+
