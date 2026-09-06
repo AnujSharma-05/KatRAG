@@ -523,12 +523,15 @@ async def process_document_task(doc_id: int, filename: str, bypass_llm: bool = F
 
 
 import math
+import time
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
 
 async def answer_question(question: str, document_id: int | None = None, category: str | None = None, top_k: int = 5, bypass_llm: bool = False, organization_id: str = "org_default", group_id: int | None = None, as_of: str | None = None) -> dict[str, Any]:
     """Retrieve relevant chunks from Milvus and build a grounded response payload."""
+    start_time = time.time()
+    routed_categories = []
     query_vector = _embed_query(question)
     
     cached_payload = query_cache.get(
@@ -721,6 +724,29 @@ async def answer_question(question: str, document_id: int | None = None, categor
             as_of=as_of
         )
         
+    latency_ms = int((time.time() - start_time) * 1000)
+    retrieved_chunk_ids = [c["chunk_id"] for c in citations]
+    
+    try:
+        db_trace = sessionLocal()
+        trace_record = models.QueryTrace(
+            organization_id=organization_id,
+            group_id=group_id,
+            query_text=question,
+            routed_categories=routed_categories,
+            gate_decision=gate_decision,
+            grounding_score=grounding_score,
+            latency_ms=latency_ms,
+            retrieved_chunk_ids=retrieved_chunk_ids
+        )
+        db_trace.add(trace_record)
+        db_trace.commit()
+    except Exception as e:
+        print(f"Telemetry logging failed: {e}")
+    finally:
+        if 'db_trace' in locals():
+            db_trace.close()
+
     return payload
 async def delete_document_assets(document_id: int, file_path: str | None) -> None:
     """Delete physical file + Milvus vectors for a document."""
@@ -776,6 +802,7 @@ async def reset_system() -> None:
         print("STEP 7")
 
         db.close()
+
 
 
 
