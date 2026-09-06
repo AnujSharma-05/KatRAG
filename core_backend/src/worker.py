@@ -1,4 +1,4 @@
-import json
+﻿import json
 import logging
 import os
 import asyncio
@@ -9,6 +9,7 @@ from minio import Minio
 from . import config, models, services
 from .milvus_store import milvus_store
 from .database import SessionLocal
+from .cache import query_cache
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -162,5 +163,6 @@ def run_worker():
 
 if __name__ == "__main__":
     run_worker()
+
 
 

@@ -1,9 +1,10 @@
-import asyncio
+﻿import asyncio
 import os
 from datetime import datetime
 from typing import Any, Optional
 from sqlalchemy import or_
 from .config import EMBEDDING_MODEL, CROSS_ENCODER_MODEL, CROSS_ENCODER_THRESHOLD, LOG_RETRIEVAL_SCORES
+from .cache import query_cache
 
 from sqlalchemy.orm import Session
 
@@ -522,12 +523,27 @@ async def process_document_task(doc_id: int, filename: str, bypass_llm: bool = F
 
 
 import math
+import time
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
 
-async def answer_question(question: str, document_id: int | None = None, category: str | None = None, top_k: int = 5, bypass_llm: bool = False, organization_id: str = "org_default") -> dict[str, Any]:
+async def answer_question(question: str, document_id: int | None = None, category: str | None = None, top_k: int = 5, bypass_llm: bool = False, organization_id: str = "org_default", group_id: int | None = None, as_of: str | None = None) -> dict[str, Any]:
     """Retrieve relevant chunks from Milvus and build a grounded response payload."""
+    start_time = time.time()
+    routed_categories = []
+    query_vector = _embed_query(question)
+    
+    cached_payload = query_cache.get(
+        org_id=organization_id,
+        group_id=str(group_id) if group_id else "default_group",
+        query=question,
+        query_embedding=query_vector,
+        as_of=as_of
+    )
+    if cached_payload:
+        return cached_payload
+
     db: Session = sessionLocal()
     try:
         ready_count = db.query(models.Document).filter(models.Document.status == "ready").count()
@@ -537,7 +553,6 @@ async def answer_question(question: str, document_id: int | None = None, categor
                 return {"answer": "Your documents are currently being processed. Please wait a moment.", "citations": [], "gate_decision": "REFUSE"}
             return {"answer": "No documents are available in the system.", "citations": [], "gate_decision": "REFUSE"}
         
-        query_vector = _embed_query(question)
         hits = []
 
         # 1. Specific Document ID Filter
@@ -692,12 +707,47 @@ async def answer_question(question: str, document_id: int | None = None, categor
         
     grounding_score = verify_grounding(answer, [hit["content"] for hit in hits])
 
-    return {
+    payload = {
         "answer": answer,
         "citations": citations,
         "gate_decision": gate_decision,
         "grounding_score": grounding_score
     }
+    
+    if gate_decision != "REFUSE":
+        query_cache.set(
+            org_id=organization_id,
+            group_id=str(group_id) if group_id else "default_group",
+            query=question,
+            query_embedding=query_vector,
+            response=payload,
+            as_of=as_of
+        )
+        
+    latency_ms = int((time.time() - start_time) * 1000)
+    retrieved_chunk_ids = [c["chunk_id"] for c in citations]
+    
+    try:
+        db_trace = sessionLocal()
+        trace_record = models.QueryTrace(
+            organization_id=organization_id,
+            group_id=group_id,
+            query_text=question,
+            routed_categories=routed_categories,
+            gate_decision=gate_decision,
+            grounding_score=grounding_score,
+            latency_ms=latency_ms,
+            retrieved_chunk_ids=retrieved_chunk_ids
+        )
+        db_trace.add(trace_record)
+        db_trace.commit()
+    except Exception as e:
+        print(f"Telemetry logging failed: {e}")
+    finally:
+        if 'db_trace' in locals():
+            db_trace.close()
+
+    return payload
 async def delete_document_assets(document_id: int, file_path: str | None) -> None:
     """Delete physical file + Milvus vectors for a document."""
     if file_path and os.path.exists(file_path):
@@ -752,6 +802,8 @@ async def reset_system() -> None:
         print("STEP 7")
 
         db.close()
+
+
 
 
 

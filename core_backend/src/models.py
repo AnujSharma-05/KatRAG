@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Float, Boolean, JSON, Text
+﻿from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Float, Boolean, JSON, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -135,19 +135,13 @@ class DocumentChunk(Base):
 class QueryTrace(Base):
     __tablename__ = "query_traces"
 
-    id = Column(String, primary_key=True, default=lambda: f"trc_{uuid.uuid4().hex[:12]}")
-    trace_id = Column(String, nullable=False, index=True)
-    organization_id = Column(String, nullable=True, index=True)
-    group_id = Column(Integer, nullable=True)
-    user_id = Column(Integer, nullable=True)
-    query_text = Column(Text, nullable=False)
-    routed_categories = Column(JSON, nullable=True)
-    candidate_ids = Column(JSON, nullable=True)
-    final_chunk_ids = Column(JSON, nullable=True)
-    top_score = Column(Float, nullable=True)
-    gate_decision = Column(String, nullable=True)
-    latency_ms = Column(JSON, nullable=True)
-    grounding_score = Column(Float, nullable=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id = Column(String, index=True)
+    group_id = Column(Integer, index=True)
+    query_text = Column(String)
+    routed_categories = Column(JSON)
+    gate_decision = Column(String)
+    grounding_score = Column(Float)
+    latency_ms = Column(Integer)
+    retrieved_chunk_ids = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
-
-
