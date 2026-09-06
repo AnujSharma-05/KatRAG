@@ -1,10 +1,23 @@
+﻿# ==============================================================================
+# KatRAG v1 - Production Boot Sequence
+# ==============================================================================
+# Startup Order & Expected Ports:
+# 1. postgres (5432) - Relational memory (Documents, Categories, Traces)
+# 2. minio (9000/9001) - Object storage for raw PDFs
+# 3. redpanda (9092) - Kafka event bus for async ingestion
+# 4. etcd (2379) - Milvus coordination
+# 5. milvus-standalone (19530/9091) - Vector database
+# 6. core-api (8000) - Python headless worker + RAG engine
+# 7. api-gateway (8080) - Go API Gateway (Front door)
+# ==============================================================================
+
 version: '3.8'
 
 services:
-  # 1. PostgreSQL Database Service
+  # 1. PostgreSQL
   db:
     image: postgres:15-alpine
-    container_name: jpl-postgres
+    container_name: katrag-postgres
     restart: always
     environment:
       POSTGRES_USER: task0_user
@@ -12,49 +25,24 @@ services:
       POSTGRES_DB: JPL_task0_RapidFoundation
     ports:
       - "5432:5432"
-      # 5. Go API Gateway
-  api-gateway:
-    build:
-      context: ../../live/backend
-    container_name: katrag-api-gateway
-    restart: always
-    ports:
-      - "8080:8080"
-    environment:
-      - KAFKA_BROKER_URL=redpanda:9092
-      - MINIO_ENDPOINT=minio:9000
-      - DATABASE_URL=postgres://task0_user:task0_password@db:5432/JPL_task0_RapidFoundation?sslmode=disable
-    depends_on:
-      - redpanda
-      - minio
-      - db
-
-volumes:
+    volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # 2. FastAPI Application Service
-  web:
-    build:
-      context: ..
-      dockerfile: Docker/dockerfile
-    container_name: jpl-rag-api
-    restart: always
-    ports:
-      - "8000:8000"
+  # 2. MinIO
+  minio:
+    image: minio/minio:RELEASE.2023-09-30T07-02-29Z
+    container_name: katrag-minio
     environment:
-      - DATABASE_URL=postgresql+psycopg2://task0_user:task0_password@db:5432/JPL_task0_RapidFoundation
-      - MILVUS_URI=http://host.docker.internal:19530
-      - GEMINI_API_KEY=[GCP_API_KEY]
-      - MILVUS_COLLECTION=document_chunks
-      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-      - EMBEDDING_DIM=384
-    extra_hosts:
-      # Allows the container to access Milvus running on your host machine
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - db
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
 
-  # 3. Redpanda (Kafka API compatible broker)
+  # 3. Redpanda
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v23.2.19
     container_name: katrag-redpanda
@@ -71,38 +59,68 @@ volumes:
     ports:
       - "19092:19092"
       - "9092:9092"
-      # 5. Go API Gateway
-  api-gateway:
-    build:
-      context: ../../live/backend
-    container_name: katrag-api-gateway
-    restart: always
-    ports:
-      - "8080:8080"
-    environment:
-      - KAFKA_BROKER_URL=redpanda:9092
-      - MINIO_ENDPOINT=minio:9000
-      - DATABASE_URL=postgres://task0_user:task0_password@db:5432/JPL_task0_RapidFoundation?sslmode=disable
-    depends_on:
-      - redpanda
-      - minio
-      - db
-
-volumes:
+    volumes:
       - redpanda_data:/var/lib/redpanda/data
 
-  # 4. MinIO (S3-compatible Object Storage)
-  minio:
-    image: minio/minio:RELEASE.2023-09-30T07-02-29Z
-    container_name: katrag-minio
+  # 4. etcd (Required for Milvus)
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: katrag-etcd
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+
+  # 5. Milvus Standalone
+  milvus-standalone:
+    image: milvusdb/milvus:v2.5.0
+    container_name: katrag-milvus
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: minioadmin
+      MINIO_SECRET_ACCESS_KEY: minioadmin123
+      MINIO_BUCKET_NAME: milvus-bucket
+    volumes:
+      - milvus_data:/var/lib/milvus
     ports:
-      - "9002:9000"
-      - "9003:9001"
-    command: server /data --console-address ":9001"
-      # 5. Go API Gateway
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - etcd
+      - minio
+
+  # 6. Python Core API & Worker
+  core-api:
+    build:
+      context: ..
+      dockerfile: Docker/dockerfile
+    container_name: katrag-core-api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://task0_user:task0_password@db:5432/JPL_task0_RapidFoundation
+      - MILVUS_URI=http://milvus-standalone:19530
+      - KAFKA_BROKER_URL=redpanda:9092
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+      - MILVUS_COLLECTION=document_chunks
+      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      - EMBEDDING_DIM=384
+    depends_on:
+      - db
+      - milvus-standalone
+      - redpanda
+      - minio
+
+  # 7. Go API Gateway
   api-gateway:
     build:
       context: ../../live/backend
@@ -113,35 +131,18 @@ volumes:
     environment:
       - KAFKA_BROKER_URL=redpanda:9092
       - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
       - DATABASE_URL=postgres://task0_user:task0_password@db:5432/JPL_task0_RapidFoundation?sslmode=disable
     depends_on:
       - redpanda
       - minio
       - db
-
-volumes:
-      - minio_data:/data
-
-  # 5. Go API Gateway
-  api-gateway:
-    build:
-      context: ../../live/backend
-    container_name: katrag-api-gateway
-    restart: always
-    ports:
-      - "8080:8080"
-    environment:
-      - KAFKA_BROKER_URL=redpanda:9092
-      - MINIO_ENDPOINT=minio:9000
-      - DATABASE_URL=postgres://task0_user:task0_password@db:5432/JPL_task0_RapidFoundation?sslmode=disable
-    depends_on:
-      - redpanda
-      - minio
-      - db
+      - core-api
 
 volumes:
   postgres_data:
   redpanda_data:
   minio_data:
-
-
+  etcd_data:
+  milvus_data:
