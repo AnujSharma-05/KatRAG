@@ -1,656 +1,528 @@
-# CaRAG — Authoritative Flow Diagrams (Source of Truth)
+﻿# KatRAG v1 — Authoritative Flow Diagrams (Source of Truth)
 
 > **Policy:** This document supersedes all previous flow descriptions.
 > Update here first, then update code.
-> Every label maps 1-to-1 to a real function, route, or table in the codebase.
+> Every label maps **1-to-1** to a real function, endpoint, database column, or Kafka event in the codebase.
+> No aspirational architecture. No hand-waving.
 
 ---
 
-## Index of All Covered Scenarios
+## Master Index: All Covered Scenarios
 
-This document contains two complete Mermaid sequence diagrams.
-Every happy path, failure path, graceful degradation, and edge case is documented here.
+### Diagram 1 — Asynchronous Ingestion & Document Versioning
 
-### Diagram 1 — Core Engine (Port 8000) — 3 Flows
+| Flow | Trigger | What It Covers |
+|---|---|---|
+| **F1 – Upload Initiation** | `POST /groups/{id}/documents` | JWT validation → group membership check → MinIO PutObject stream → versioning check (supersession or fresh insert) → Postgres row insert → produce `doc.uploaded` → 202 Accepted |
+| **F2 – Worker: doc.uploaded** | Kafka `doc.uploaded` | Idempotency guard → MinIO download → `extract_blocks_from_pdf` → `chunk_structural_blocks` → `enrich_chunks_with_context` → auto-categorization (vector ≥ 0.60 → LLM → 'general') → Parent-Child embedding → Milvus upsert → produce `doc.indexed` |
+| **F3 – Worker: doc.superseded** | Kafka `doc.superseded` | `milvus_store.deprecate_document_vectors()` → is_current=false mutation, no delete |
+| **F4 – Post-Ingestion Taxonomy** | Within `process_document_task` | `update_categorical_summary()` (LLM / bypass / 429 fallback) → `consolidate_categories()` (Gemini taxonomy architect) |
+| **F5 – WebSocket Broadcast** | Kafka `doc.indexed` / `doc.failed` | Go WS Broadcaster matches group_id → push to browser |
 
-| Flow                               | Trigger          | What It Covers                                                                                                                                                                                                                                                                                                                                                                                    |
-| ---------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **F1 – Document Ingestion** | `POST /upload` | PDF validation → disk save → background task spawn → text extraction failure path → chunking failure path → auto-categorization (vector match ≥ 0.60 fast path, LLM fallback, bypass_llm mode, Gemini 429 graceful fallback) → embedding → Milvus upsert →`update_categorical_summary` (LLM + heuristic + 429 paths) → `consolidate_categories` (taxonomy builder, bypass_llm skip) |
-| **F2 – RAG Chat**           | `POST /chat`   | No ready docs guard → embed query → Mode A (document pin) → Mode B (manual category) → Mode C (2-stage routing: confidence gate < 0.35 flat search, LLM routing + hallucination guard, category → Milvus scoped search) → no hits guard → answer synthesis (LLM + bypass_llm + 429 mock fallback)                                                                                          |
-| **F3 – System Reset**       | `POST /reset`  | Disk wipe → Milvus full drop → Postgres truncate → sequence restart                                                                                                                                                                                                                                                                                                                            |
+### Diagram 2 — Retrieval, Scoped Caching & Grounded Generation
 
-### Diagram 2 — Live Multi-Tenant Adapter (Port 8001) — 8 Flows
+| Flow | Trigger | What It Covers |
+|---|---|---|
+| **F6 – Cache Hit** | `POST /groups/{id}/chat` | `cache.get()` SHA-256 exact OR semantic cosine >= 0.97 → return payload, bypass all ML |
+| **F7 – Temporal Retrieval** | `as_of` timestamp provided | `resolve_active_document_ids()` → temporal `valid_from <= as_of AND (valid_to IS NULL OR valid_to > as_of)` |
+| **F8 – Mode A** | `document_id` provided | Single-doc scope → Milvus hybrid dense + sparse |
+| **F9 – Mode B** | `category` provided | Category doc list from Postgres → scoped Milvus search |
+| **F10 – Mode C** | No override | Soft Router top-3 (score >= 0.4) → 1.25x boost → merge with global hits → RRF |
+| **F11 – Confidence Gate** | After Cross-Encoder | sigmoid(logit) → REFUSE < 0.35 → HEDGED < 0.70 → ANSWER |
+| **F12 – NLI Grounding** | Post-LLM synthesis | DeBERTa-v3-small entailment check → grounding_score |
+| **F13 – Passive Telemetry** | Every query | QueryTrace INSERT (latency_ms, gate_decision, grounding_score, chunk_ids) in try/except |
 
-| Flow                              | Trigger                         | What It Covers                                                                                                                                                                                                                                                                                       |
-| --------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **F1 – Registration**      | `POST /auth/register`         | Email duplicate guard → bcrypt hash → user creation                                                                                                                                                                                                                                                |
-| **F2 – Login & JWT**       | `POST /auth/login`            | Credential verification → JWT issuance (HS256, 60 min) → 401 on any failure                                                                                                                                                                                                                        |
-| **F3 – JWT Middleware**    | Every protected request         | Token decode → user lookup → 401 on expired/malformed/deleted-user                                                                                                                                                                                                                                 |
-| **F4 – Group Creation**    | `POST /groups/`               | Duplicate name guard → group + auto-membership creation                                                                                                                                                                                                                                             |
-| **F5 – Member Invitation** | `POST /groups/{id}/invite`    | 5-step validation chain (group exists → requester is member → not self-invite → invitee registered → not already member)                                                                                                                                                                         |
-| **F6 – Scoped Ingestion**  | `POST /groups/{id}/documents` | Membership gate → disk save with group subfolder → full Core Engine ingestion pipeline (with group_id on all artifacts) → WebSocket`doc_processing` / `doc_ready` / `doc_failed` broadcast                                                                                                  |
-| **F7 – Scoped RAG Chat**   | `POST /groups/{id}/chat`      | Membership gate → group security boundary (`group_doc_ids`) → Mode A (group + doc_id double filter) → Mode B (group + category double filter) → Mode C (group-scoped category search → confidence gate → LLM routing → group ∩ category intersection) → synthesis → 503 on service error |
-| **F8 – Live Reset**        | `POST /auth/reset`            | Nullify doc group_id → delete GroupMember → delete Group → delete User → preserve Milvus vectors                                                                                                                                                                                                 |
+### Diagram 3 — Multi-Tenant Security & Cache Isolation
 
-### Error Reference
-
-| Error                      | Code               | Location                            |
-| -------------------------- | ------------------ | ----------------------------------- |
-| Non-PDF upload             | 400                | main.py / documents.py              |
-| Email already registered   | 400                | auth.register                       |
-| Weak/invalid input         | 422                | FastAPI validation                  |
-| Bad credentials            | 401                | auth.login                          |
-| Expired/malformed JWT      | 401                | auth.get_current_user               |
-| Not a group member         | 403                | _assert_membership                  |
-| Group / document not found | 404                | groups.py / chat.py                 |
-| Duplicate group name       | 400                | groups.create_group                 |
-| Already a member           | 409                | groups.invite_member                |
-| Gemini 429 during query    | Soft mock fallback | llm_service.py                      |
-| Gemini 429 during summary  | Heuristic fallback | services.update_categorical_summary |
-| Empty/scanned PDF          | status=failed      | services.process_document_task      |
-| Chat service exception     | 503                | chat.group_chat                     |
+| Flow | Trigger | What It Covers |
+|---|---|---|
+| **F14 – Cache Key Isolation** | Any cache operation | Key prefix `katrag:{org_id}:{group_id}:exact:{sha256}` — same query from different orgs = different keys |
+| **F15 – Milvus Defense-in-Depth** | Every search | C++ scalar filter `organization_id == org_id AND is_current == true` |
 
 ---
 
-## Diagram 1 — CaRAG Core Engine (Port 8000)
+## System Error Reference Matrix
 
-**WHY this exists:** An independent, stateless RAG engine that accepts any PDF, auto-discovers its category, embeds it into a vector store, and routes queries through a 2-stage categorical funnel before LLM synthesis.  No user identity, no group scoping.  Pure knowledge retrieval.
+| Scenario | Code | Service | Raised By |
+|---|---|---|---|
+| Invalid or expired JWT | 401 | Go Gateway | `validateToken()` middleware |
+| Not a group member | 403 | Go Gateway | `assertMembership()` |
+| Group not found | 404 | Go Gateway | Group lookup |
+| Document not ready | 404 / REFUSE | Go / Python Core | Doc status guard |
+| Non-PDF or invalid file | 400 | Go Gateway | Content-type validation |
+| PDF unreadable / scanned | `status='failed'` | Python Worker | `extract_blocks_from_pdf()` returns empty |
+| Worker pipeline exception | `doc.failed` event | Python Worker | Outer catch in `run_worker` |
+| Kafka _PARTITION_EOF | silent continue | Python Worker | `consumer.poll()` guard |
+| No ready documents | 200 REFUSE | Python Core | `ready_count == 0` in `answer_question` |
+| Zero Milvus hits | 200 REFUSE | Python Core | `if not hits:` guard |
+| Cross-Encoder C < 0.35 | 200 REFUSE | Python Core | `gate_decision == "REFUSE"` |
+| Gemini 429 in summary | Heuristic fallback | Python Core | `update_categorical_summary` 429 catch |
+| Gemini 429 in consolidation | No-op | Python Core | `consolidate_categories` exception |
+| Gemini 429 in synthesis | Raw Milvus preview | Python Core | `generate_answer` with bypass_llm |
+| Telemetry write fails | silent | Python Core | `QueryTrace` INSERT try/except |
+| Python Core unreachable | 503 | Go Gateway | HTTP proxy error |
 
 ---
 
-## Diagram 2 — CaRAG Live Multi-Tenant Adapter (Port 8001)
+## Diagram 1 — Asynchronous Ingestion & Document Versioning
 
-**WHY this exists:** The Live layer wraps the Core engine and adds:
-(1) Identity — every request is tied to a real registered user.
-(2) Group Isolation — documents, categories, and queries are scoped to a `group_id`.
-(3) Cross-group security — Milvus filters enforce group boundaries at the vector level.
-(4) Real-time events — WebSocket broadcasts tell all group members when ingestion finishes.
+**WHY this exists:**
+In-process FastAPI BackgroundTask workers are killed on pod restart, dropping data silently. The event-driven Go→Redpanda→Python pipeline guarantees durability. Go owns the network boundary. Python owns heavy ML compute. They share nothing except Postgres rows and Kafka events.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client
-    participant LIVE  as Live FastAPI (Port 8001)
-    participant PG    as PostgreSQL
-    participant CORE  as Core Engine Services (services.py)
-    participant MV    as Milvus DB
-    participant GEM   as Google Gemini
-    participant WS    as WebSocket Manager
+    participant GW   as Go API Gateway (live/backend)
+    participant S3   as MinIO S3 (bucket: katrag-docs)
+    participant PG   as PostgreSQL
+    participant RP   as Redpanda Broker
+    participant WRK  as Python Worker (worker.py::run_worker)
+    participant SVC  as services.process_document_task
+    participant MV   as Milvus 2.5
+    participant WS   as Go WebSocket Broadcaster
 
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 1 — USER REGISTRATION  (POST /auth/register)
-    %% WHY: Create a persistent identity. Email is the unique key.
-    %%      Password is bcrypt-hashed — never stored in plaintext.
-    %% ══════════════════════════════════════════════════════════
+    Note over Client,WS: ── F1: Upload Initiation & Versioning (POST /groups/{id}/documents) ──
 
-    Note over Client,WS: ── FLOW 1: User Registration (POST /auth/register) ──
-
-    Client->>LIVE: POST /auth/register {email, password}
-    LIVE->>PG: SELECT User WHERE email=email
-  
-    alt Email already registered
-        LIVE-->>Client: 400 "Email already registered"
+    Client->>GW: POST /groups/{id}/documents (multipart/form-data, Authorization: Bearer JWT)
+    GW->>GW: jwt.Parse(token) → extract user_id, organization_id
+    alt JWT invalid or expired
+        GW-->>Client: 401 Unauthorized
     end
-
-    LIVE->>LIVE: pwd_context.hash(password)  [bcrypt]
-    LIVE->>PG: INSERT User (email, hashed_password)
-    LIVE-->>Client: 200 {message: "User created successfully", user_id}
-
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 2 — USER LOGIN + JWT ISSUANCE  (POST /auth/login)
-    %% WHY: Exchange credentials for a short-lived JWT (60 min).
-    %%      All protected routes use this token as identity proof.
-    %% ══════════════════════════════════════════════════════════
-
-    Note over Client,WS: ── FLOW 2: Login & JWT Issuance (POST /auth/login) ──
-
-    Client->>LIVE: POST /auth/login {username=email, password}
-    LIVE->>PG: SELECT User WHERE email=email
-
-    alt User not found
-        LIVE-->>Client: 401 "Invalid credentials"
+    GW->>PG: SELECT GroupMember WHERE group_id=id AND user_id=user_id
+    alt User not a member of this group
+        GW-->>Client: 403 Forbidden
     end
-
-    LIVE->>LIVE: pwd_context.verify(password, hashed_password)
-
-    alt Password mismatch
-        LIVE-->>Client: 401 "Invalid credentials"
+    GW->>S3: PutObject(bucket='katrag-docs', key=object_name, reader=multipart_stream)
+    Note over GW,S3: File streams byte-by-byte. Gateway never buffers full PDF in RAM.
+    GW->>PG: SELECT Document WHERE filename=filename AND group_id=id
+    alt Document already exists — Supersession path
+        GW->>PG: UPDATE DocumentVersion SET is_current=false, valid_to=now() WHERE document_id=existing.id AND is_current=true
+        GW->>PG: INSERT DocumentVersion (document_id=existing.id, version_num=prev+1, is_current=true, valid_from=now(), object_key)
+        GW->>RP: Produce doc.superseded (Key: organization_id, Payload: {document_id, organization_id, object_name})
+    else New document — Fresh insert path
+        GW->>PG: INSERT Document (filename, status='pending', organization_id, group_id, file_size)
+        GW->>PG: INSERT DocumentVersion (document_id, version_num=1, is_current=true, valid_from=now(), object_key)
     end
+    GW->>RP: Produce doc.uploaded (Key: organization_id, Payload: {document_id, organization_id, object_name, group_id})
+    GW-->>Client: 202 Accepted {message: "Document queued for processing"}
+    Note over Client: Client opens WebSocket and waits for doc.indexed or doc.failed push
 
-    LIVE->>LIVE: create_access_token({sub: user_id}, expires=60min, algo=HS256)
-    LIVE-->>Client: 200 {access_token, token_type: "bearer"}
+    Note over RP,WS: ── F2: Python Worker Consuming doc.uploaded ──
 
-    Note over Client: Client stores JWT and sends it as "Authorization: Bearer <token>" on all subsequent requests
-
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 3 — JWT VALIDATION MIDDLEWARE
-    %% WHY: Every protected endpoint depends on get_current_user().
-    %%      This is the single authentication choke-point.
-    %% ══════════════════════════════════════════════════════════
-
-    Note over Client,PG: ── FLOW 3: JWT Middleware (get_current_user dependency) ──
-
-    Client->>LIVE: Any protected request (Authorization: Bearer JWT)
-    LIVE->>LIVE: jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
-
-    alt Token missing, malformed, or expired
-        LIVE-->>Client: 401 "Could not validate credentials"
+    RP-->>WRK: consumer.poll(timeout=1.0) → msg on topic 'doc.uploaded'
+    alt msg.error() == KafkaError._PARTITION_EOF
+        WRK->>WRK: continue (normal partition boundary, silent)
+    else msg.error() is other KafkaError
+        WRK->>WRK: raise KafkaException(msg.error())
     end
-
-    LIVE->>PG: SELECT User WHERE id=payload["sub"]
-
-    alt User row deleted after token issued
-        LIVE-->>Client: 401 "Could not validate credentials"
+    WRK->>WRK: payload = json.loads(msg.value()) → document_id, organization_id, object_name
+    alt Missing document_id or object_name in payload
+        WRK->>WRK: logger.error("Missing fields") → continue
     end
-
-    Note over LIVE: current_user object injected into route handler — all flows below assume this passed
-
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 4 — GROUP CREATION  (POST /groups/)
-    %% WHY: Every document and query lives inside a group.
-    %%      Creator auto-joins as first member.
-    %% ══════════════════════════════════════════════════════════
-
-    Note over Client,WS: ── FLOW 4: Group Creation (POST /groups/) ──
-
-    Client->>LIVE: POST /groups/ {name} + Bearer JWT
-    LIVE->>PG: SELECT Group WHERE name=group.name  [duplicate check]
-
-    alt Name already taken globally
-        LIVE-->>Client: 400 "A group with that name already exists"
+    WRK->>PG: SELECT Document WHERE id=document_id
+    alt Document not found in DB
+        WRK->>WRK: logger.error("Document not found") → continue
     end
-
-    LIVE->>PG: INSERT Group (name, created_by=current_user.id)
-    LIVE->>PG: INSERT GroupMember (group_id=new_group.id, user_id=current_user.id)
-    LIVE-->>Client: 200 GroupResponse {id, name, created_by, created_at}
-
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 5 — MEMBER INVITATION  (POST /groups/{id}/invite)
-    %% WHY: A group is only useful when multiple users can share
-    %%      the same scoped knowledge base.
-    %%      Only existing members can invite others.
-    %% ══════════════════════════════════════════════════════════
-
-    Note over Client,WS: ── FLOW 5: Member Invitation (POST /groups/{group_id}/invite) ──
-
-    Client->>LIVE: POST /groups/{group_id}/invite {email} + Bearer JWT
-    LIVE->>PG: SELECT Group WHERE id=group_id
-
-    alt Group not found
-        LIVE-->>Client: 404 "Group not found"
+    alt doc.status in ["indexed", "processing", "failed"]
+        WRK->>WRK: logger.warning("Already in state — skipping") → continue
+        Note over WRK: Idempotency guard — prevents double-processing on Kafka replay after pod restart
     end
+    WRK->>PG: UPDATE Document SET status='processing'
+    WRK->>S3: minio_client.fget_object(bucket, object_name, /tmp/katrag_processing/{doc_id}.pdf)
+    WRK->>PG: UPDATE Document SET file_path='/tmp/katrag_processing/{doc_id}.pdf'
+    WRK->>SVC: asyncio.run(services.process_document_task(doc.id, doc.filename, bypass_llm=False))
 
-    LIVE->>PG: SELECT GroupMember WHERE group_id=group_id AND user_id=current_user.id
+    Note over SVC,MV: ── Inside process_document_task() ──
 
-    alt Requester is not a member
-        LIVE-->>Client: 403 "You are not a member of this group"
+    SVC->>SVC: extract_blocks_from_pdf(file_path) [PyMuPDF structural block extraction]
+    alt PDF empty, corrupt, or scanned — no extractable text
+        SVC->>PG: UPDATE Document SET status='failed'
+        SVC-->>WRK: returns (triggers doc.failed publish)
     end
-
-    alt Invitee email == requester email
-        LIVE-->>Client: 400 "You are already in this group"
+    SVC->>SVC: chunk_structural_blocks(blocks, bypass_llm)
+    Note over SVC: RecursiveCharacterTextSplitter with CHUNK_SIZE, CHUNK_OVERLAP, separators=[newline+newline, newline, period+space, space, empty]
+    alt No chunks produced
+        SVC->>PG: UPDATE Document SET status='failed'
+        SVC-->>WRK: returns
     end
+    SVC->>SVC: full_text_approx = join all block["text"] fields
+    SVC->>SVC: enrich_chunks_with_context(full_text_approx, chunks, bypass_llm)
+    Note over SVC: Anthropic Contextual Retrieval — LLM generates 1-2 sentence situating prefix per chunk. Stored as chunk["context_prefix"] and DocumentChunk.context_prefix.
 
-    LIVE->>PG: SELECT User WHERE email=invite.email
-
-    alt User not registered
-        LIVE-->>Client: 404 "That email is not registered on CaRAG Live yet"
+    Note over SVC,MV: ── Dynamic Auto-Categorization ──
+    SVC->>SVC: _extract_summary_text_from_pdf(file_path) [first 5 pages + last 2 pages via PdfReader]
+    SVC->>SVC: first_chunk_vector = _embed_query(summary_text[:1000])
+    SVC->>MV: milvus_store.search_categories(first_chunk_vector, top_k=1, group_id=doc.group_id)
+    alt matches[0]["score"] >= 0.60 — Fast vector match path
+        MV-->>SVC: resolved_category_name = matches[0]["category_name"]
+    else score < 0.60 AND bypass_llm=false — LLM classification path
+        SVC->>PG: SELECT Category WHERE group_id=doc.group_id [existing_categories excluding 'general']
+        SVC->>SVC: llm_service.classify_ingested_document(text_sample[:4000], existing_categories)
+        alt Gemini 429 or exception during classification
+            SVC->>SVC: resolved_category_name = "general"
+        end
+    else bypass_llm=true OR score < 0.60 — Default fallback
+        SVC->>SVC: resolved_category_name = "general"
     end
-
-    LIVE->>PG: SELECT GroupMember WHERE group_id=group_id AND user_id=invitee.id
-
-    alt Already a member
-        LIVE-->>Client: 409 "They are already in this group"
+    SVC->>PG: GET Category WHERE name=resolved_category_name AND group_id=doc.group_id
+    alt Category does not exist
+        SVC->>PG: INSERT Category (name, group_id)
     end
-
-    LIVE->>PG: INSERT GroupMember (group_id, user_id=invitee.id)
-    LIVE-->>Client: 200 GroupMemberResponse {id, group_id, user_id, email}
-
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 6 — GROUP-SCOPED DOCUMENT INGESTION
-    %%          (POST /groups/{group_id}/documents)
-    %% WHY: Upload a PDF scoped to a group. The Core engine runs
-    %%      the full ingestion pipeline (embedding, categorization),
-    %%      but all artifacts (Postgres rows, Milvus vectors) carry
-    %%      group_id so they can never leak across group boundaries.
-    %%      WebSocket notifies all group members of status change.
-    %% ══════════════════════════════════════════════════════════
-
-    Note over Client,WS: ── FLOW 6: Group-Scoped Document Ingestion (POST /groups/{group_id}/documents) ──
-
-    Client->>LIVE: POST /groups/{group_id}/documents (file=*.pdf, category?=optional, bypass_llm?=false) + Bearer JWT
-    LIVE->>PG: _assert_membership(db, group_id, current_user.id)  [403 if not member]
-    LIVE->>LIVE: Validate content-type == application/pdf  [400 if not PDF]
-    LIVE->>LIVE: Save file to uploads/group_{group_id}/filename
-    LIVE->>PG: INSERT Document (filename, file_path, file_size, status="uploaded", group_id=group_id)
-
-    alt category provided and != "general"
-        LIVE->>PG: GET or INSERT Category(name=category, group_id=group_id)
-        LIVE->>PG: INSERT document_categories link
+    alt Doc was in 'general' but resolved to specific category
+        SVC->>PG: doc.categories.remove(general_cat)
     end
+    SVC->>PG: doc.categories.append(db_category) + db.commit()
 
-    LIVE->>LIVE: background_tasks.add_task(process_document_task_with_ws, doc_id, filename, group_id, bypass_llm)
-    LIVE-->>Client: 200 {id, filename, status="uploaded", group_id, categories}
-
-    Note over LIVE,WS: ── Async: process_document_task_with_ws(doc_id, filename, group_id, bypass_llm) ──
-
-    LIVE->>WS: manager.broadcast_to_group(group_id, {event:"doc_processing", doc_id, filename})
-    Note over WS: All connected WebSocket clients in this group receive real-time notification
-
-    LIVE->>CORE: await services.process_document_task(doc_id, filename, bypass_llm)
-    Note over CORE,MV: Full ingestion pipeline runs — identical to Core Engine Flow 1 above,\nbut all Category rows carry group_id=group_id, all Milvus vectors carry group_id metadata
-
-    alt process_document_task completes — doc.status=="ready"
-        LIVE->>PG: SELECT Document WHERE id=doc_id → read final categories
-        LIVE->>WS: manager.broadcast_to_group(group_id, {event:"doc_ready", doc_id, filename, categories})
-    else process_document_task fails — doc.status=="failed"
-        LIVE->>WS: manager.broadcast_to_group(group_id, {event:"doc_failed", doc_id, filename})
-    end
-
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 7 — GROUP-SCOPED RAG CHAT  (POST /groups/{id}/chat)
-    %% WHY: All retrieval is hard-bounded to documents that belong
-    %%      to THIS group. Cross-group data leakage is impossible
-    %%      because every Milvus search is filtered by the
-    %%      group's document ID set — computed fresh per request.
-    %% ══════════════════════════════════════════════════════════
-
-    Note over Client,GEM: ── FLOW 7: Group-Scoped RAG Chat (POST /groups/{group_id}/chat) ──
-
-    Client->>LIVE: POST /groups/{group_id}/chat {question, document_id?, category?, top_k, bypass_llm?} + Bearer JWT
-    LIVE->>PG: _assert_membership(db, group_id, current_user.id)  [403 if not member]
-
-    LIVE->>PG: SELECT Document.id WHERE group_id=group_id AND status="ready"
-    Note over LIVE: group_doc_ids[] = the security boundary — only these IDs can ever be searched
-
-    alt No ready documents in this group
-        LIVE->>PG: COUNT Document WHERE group_id=group_id AND status IN (uploaded, processing)
-        alt Pending docs exist
-            LIVE-->>Client: "Documents still processing — please wait"
-        else No docs at all
-            LIVE-->>Client: "No documents in group — upload PDFs first"
+    Note over SVC,MV: ── Parent-Child Embedding and Milvus Upsert ──
+    SVC->>PG: DELETE DocumentChunk WHERE document_id=doc_id [clear prior chunks]
+    loop For each parent chunk in structured_chunks
+        SVC->>PG: INSERT DocumentChunk (document_id, chunk_index=parent_idx*1000, content, context_prefix, page_from, section_path)
+        Note over SVC: db.flush() to get parent_db.id before inserting children
+        loop For each child sub-chunk
+            SVC->>SVC: embed_text = context_prefix + newline + child_text (or just child_text)
         end
     end
+    SVC->>SVC: embeddings = _embed_texts(child_texts) [EMBEDDING_MODEL_INSTANCE.encode(), normalize_embeddings=True]
+    SVC->>MV: milvus_store.upsert_chunks(document_id, child_texts, embeddings, organization_id)
+    Note over MV: Inserts HNSW dense vectors + native sparse BM25 inverted index. Scalars: document_id, chunk_index, organization_id, is_current=true.
+    MV-->>SVC: milvus_ids[] (one UUID per child chunk)
+    loop For each child chunk
+        SVC->>PG: INSERT DocumentChunk (document_id, chunk_index, content, context_prefix, milvus_id, parent_chunk_id=parent_db.id, page_from, section_path)
+    end
+    SVC->>PG: UPDATE Document SET status='ready'
 
-    LIVE->>LIVE: _embed_query(question)  [SentenceTransformer]
-
-    %% ── Mode A: Pinned to a specific document ──
-    alt document_id provided  [Mode A — Single document scope]
-        LIVE->>PG: SELECT Document WHERE id=document_id AND group_id=group_id AND status="ready"
-        Note over LIVE: group_id check here prevents cross-group doc_id guessing attacks
-        alt Document not in this group or not ready
-            LIVE-->>Client: "That document doesn't exist in this group or isn't ready yet"
-        end
-        LIVE->>MV: milvus_hits = milvus_store.search(query_embedding, top_k*3, document_id=payload.document_id)
-        LIVE->>BM25: bm25_hits = bm25_store.search(question, top_k*3, document_id=payload.document_id)
-        LIVE->>LIVE: hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-
-    %% ── Mode B: Manual category filter ──
-    else category provided  [Mode B — Category scope within group]
-        LIVE->>PG: SELECT Document.id JOIN categories WHERE group_id=group_id AND Category.name=category AND status="ready"
-        Note over LIVE: Double filter: group_id AND category — strictly scoped
-        alt No ready docs in that category for this group
-            LIVE-->>Client: "No ready documents in that category within this group"
-        end
-        LIVE->>MV: milvus_hits = milvus_store.search(query_embedding, top_k*3, document_ids=category_doc_ids)
-        LIVE->>BM25: bm25_hits = bm25_store.search(question, top_k*3, document_ids=category_doc_ids)
-        LIVE->>LIVE: hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-
-    %% ── Mode C: Automatic 2-stage routing ──
-    else No override  [Mode C — Automatic categorical routing within group]
-        LIVE->>MV: milvus_store.search_categories(query_vector, top_k=5, group_id=group_id)
-        Note over MV: Only category summaries belonging to this group_id are returned
-
-        alt Top category score < 0.35 OR no categories exist  [Confidence Fallback]
-            Note over LIVE: Low confidence — skipping category routing
-            LIVE->>MV: milvus_hits = milvus_store.search(query_embedding, top_k*3, document_ids=group_doc_ids)
-            LIVE->>BM25: bm25_hits = bm25_store.search(question, top_k*3, document_ids=group_doc_ids)
-            LIVE->>LIVE: hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-            Note over MV: Still bounded to group's documents — no global search
-
-        else Top score >= 0.35  [2-Stage Routing Activated]
-            alt bypass_llm=false
-                LIVE->>GEM: classify_query_category(question, category_candidates)
-                GEM-->>LIVE: chosen_category  [LLM Call 1 — cheap classification]
-                alt LLM returns name not in candidate list
-                    LIVE->>LIVE: chosen_category = category_matches[0]["category_name"]
-                end
-            else bypass_llm=true OR Gemini 429
-                LIVE->>LIVE: chosen_category = category_matches[0]["category_name"]
+    Note over SVC,MV: ── F4: Post-Ingestion Taxonomy Update ──
+    loop For each category associated with this document
+        SVC->>SVC: await update_categorical_summary(cat.name, doc.group_id, bypass_llm)
+        alt bypass_llm=true
+            SVC->>SVC: heuristic summary = "Category covers {cat_name}, files: {filenames}"
+        else bypass_llm=false
+            loop For each doc in category
+                SVC->>SVC: _extract_summary_text_from_pdf(doc.file_path)
             end
-
-            LIVE->>PG: SELECT Document.id JOIN categories WHERE group_id=group_id AND Category.name=chosen_category AND status="ready"
-            Note over LIVE: Intersection: group_id ∩ chosen_category — tightest possible scope
-
-            alt No docs ready in chosen category within group
-                LIVE->>MV: milvus_hits = milvus_store.search(query_embedding, top_k*3, document_ids=group_doc_ids)
-                LIVE->>BM25: bm25_hits = bm25_store.search(question, top_k*3, document_ids=group_doc_ids)
-                LIVE->>LIVE: hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-                Note over MV: Fallback to group-wide flat search — still group-isolated
-            else Scoped docs found
-                LIVE->>MV: milvus_hits = milvus_store.search(query_embedding, top_k*3, document_ids=scoped_ids)
-                LIVE->>BM25: bm25_hits = bm25_store.search(question, top_k*3, document_ids=scoped_ids)
-                LIVE->>LIVE: hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
+            SVC->>SVC: Gemini prompt → 2-3 sentence unified category summary
+            alt Gemini 429 during summary generation
+                SVC->>SVC: heuristic fallback summary (same as bypass_llm path)
             end
         end
+        SVC->>SVC: summary_vector = _embed_query(summary_text)
+        SVC->>PG: UPDATE Category SET summary=summary_text WHERE name=cat_name AND group_id=group_id
+        SVC->>MV: milvus_store.upsert_category_summary(category_name, summary_text, summary_vector, group_id)
+    end
+    SVC->>SVC: await consolidate_categories(doc.group_id, bypass_llm)
+    alt bypass_llm=true OR fewer than 2 categories exist
+        SVC->>SVC: return (consolidation skipped)
+    else 2+ categories AND bypass_llm=false
+        SVC->>PG: SELECT Category WHERE group_id → flat list with summaries
+        SVC->>SVC: Gemini TAXONOMY ARCHITECT prompt → JSON [{parent_category, sub_category_ids[]}]
+        Note over SVC: Prompt instructs Gemini to detect hierarchies, synthesize parent names, support multiple inheritance, return raw JSON array only
+        alt Gemini returns [] OR 429 OR JSON parse error
+            SVC->>SVC: consolidation no-ops safely (empty return)
+        end
+        loop For each {parent_category, sub_category_ids} entry
+            SVC->>PG: GET or INSERT parent Category (name=parent_name, group_id)
+            loop For each sub_category → each document in sub_category
+                SVC->>PG: doc.categories.append(parent_cat) if not already member
+            end
+            SVC->>PG: db.commit()
+            SVC->>SVC: await update_categorical_summary(parent_name, group_id, bypass_llm)
+        end
     end
 
-    %% ── Stage 2: Cross-Encoder Reranking & Confidence Gate ──
-    Note over LIVE: ── STAGE 2: CROSS-ENCODER RERANKING ──
-    LIVE->>LIVE: scores = CrossEncoder.predict([query, chunk] for chunk in hits)
-    LIVE->>LIVE: Sort hits descending by scores, keep top_k
-  
-    alt hits[0].cross_score < CROSS_ENCODER_THRESHOLD
-        LIVE-->>Client: 200 {answer="I could not find sufficiently relevant information..."}
-        Note over LIVE,Client: Retrieval Confidence Gate Triggered — Halt execution
+    Note over WRK,RP: ── Worker: Publish Result & Cleanup ──
+    WRK->>PG: db.refresh(doc)
+    alt doc.status != "failed"
+        WRK->>PG: UPDATE Document SET status='indexed'
+        WRK->>WRK: cache.invalidate_scope(org_id, group_id)
+        Note over WRK: Deletes all exact_store keys matching katrag:{org_id}:{group_id}:* AND clears semantic_store[scope]
+        WRK->>RP: Produce doc.indexed (Key: org_id, Payload: {document_id, status: "indexed", group_id})
+    else doc.status == "failed"
+        WRK->>RP: Produce doc.failed (Key: org_id, Payload: {document_id, status: "failed", error, group_id})
     end
+    WRK->>WRK: os.remove(/tmp/katrag_processing/{doc_id}.pdf) [temp file cleanup]
 
-    %% ── Answer Synthesis ──
-    Note over LIVE,GEM: ── LLM Call 2: Answer Synthesis ──
-
-    alt No hits from Milvus
-        LIVE-->>Client: "The group's documents don't contain enough information"
+    Note over RP,MV: ── F3: Worker Handling doc.superseded (parallel event) ──
+    RP-->>WRK: consumer.poll() → msg on topic 'doc.superseded'
+    WRK->>WRK: payload = {document_id, organization_id}
+    alt Missing document_id or organization_id
+        WRK->>WRK: logger.error("Missing fields") → continue
     end
+    WRK->>MV: milvus_store.deprecate_document_vectors(document_id, organization_id)
+    Note over MV: Sets is_current=false on all Milvus vectors for this document_id. ZERO vectors deleted. Temporal memory fully preserved.
 
-    LIVE->>LIVE: Build context = "[Source N] {chunk_content}" per hit
-    LIVE->>LIVE: Build citations = [{document_id, chunk_index, score, content_preview[:220]}]
-
-    alt bypass_llm=false
-        LIVE->>GEM: llm_service.generate_answer(question, context)
-        GEM-->>LIVE: Grounded answer string
-    else bypass_llm=true OR Gemini 429
-        LIVE->>LIVE: "⚠️ Gemini quota hit — showing raw Milvus match previews"
+    Note over RP,WS: ── F5: Go WebSocket Broadcaster ──
+    RP-->>WS: Go background consumer catches doc.indexed OR doc.failed
+    WS->>WS: Look up active WebSocket connections for payload.group_id
+    alt Active connections exist for this group_id
+        WS-->>Client: Push {type: "doc_ready" | "doc_failed", document_id, group_id}
+    else No active connections
+        WS->>WS: Event dropped silently
     end
-
-    LIVE-->>Client: 200 ChatResponse {answer, citations[]}
-
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 8 — LIVE DATABASE RESET  (POST /auth/reset)
-    %% WHY: Testing utility — purges all users, groups, and memberships
-    %%      while PRESERVING all ingested documents and vectors.
-    %%      Lets testers re-create fresh identity graphs without
-    %%      re-uploading large PDF corpora.
-    %% ══════════════════════════════════════════════════════════
-
-    Note over Client,PG: ── FLOW 8: Live Layer Reset (POST /auth/reset) ──
-
-    Client->>LIVE: POST /auth/reset
-    LIVE->>PG: UPDATE Document SET group_id=NULL  [decouple docs from groups BEFORE deletes to avoid CASCADE]
-    LIVE->>PG: DELETE GroupMember (all rows)
-    LIVE->>PG: DELETE Group (all rows)
-    LIVE->>PG: DELETE User (all rows)
-    Note over MV: Milvus vectors are NOT deleted — document knowledge is preserved
-    LIVE-->>Client: 200 "Live layer reset successful. Documents preserved."
 ```
 
 ---
 
-## Error Reference Table
+## Diagram 2 — Retrieval, Scoped Caching & Grounded Generation
 
-| Scenario                           | Error Code            | Raised By                              |
-| ---------------------------------- | --------------------- | -------------------------------------- |
-| Non-PDF file upload                | 400                   | main.py / documents.py                 |
-| Email already registered           | 400                   | auth.py register                       |
-| Bad credentials on login           | 401                   | auth.py login                          |
-| Expired / malformed JWT            | 401                   | auth.get_current_user                  |
-| Not a member of group              | 403                   | groups.py / chat.py _assert_membership |
-| Group / document not found         | 404                   | groups.py / documents.py / chat.py     |
-| Duplicate group name               | 400                   | groups.py create_group                 |
-| Already a member on invite         | 409                   | groups.py invite_member                |
-| Gemini 429 during query            | Mock fallback         | llm_service.py                         |
-| Gemini 429 during summary          | Heuristic fallback    | services.update_categorical_summary    |
-| PDF empty / no text                | status="failed"       | services.process_document_task         |
-| Document not in group (chat)       | Soft 200 with message | chat.py group_chat                     |
-| Generic uncaught exception in chat | 503                   | chat.py group_chat                     |
+**WHY this exists:**
+RAG without a confidence gate hallucinates freely. RAG without scoped caching is expensive at scale. RAG without NLI grounding cannot audit its own failure modes. This 5-stage pipeline stacks all three defenses — every answer is earned by cross-encoder probability, not just cosine similarity.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User
-    participant API   as FastAPI (main.py)
-    participant PG    as PostgreSQL
-    participant BG    as BackgroundTask (services.py)
-    participant MV    as Milvus DB
-    participant GEM   as Google Gemini
+    actor Client
+    participant GW   as Go Gateway
+    participant PY   as services.answer_question
+    participant CA   as ScopedQueryCache (cache.py)
+    participant PG   as PostgreSQL
+    participant MV   as Milvus 2.5
+    participant CX   as CrossEncoder (ms-marco-MiniLM-L-6-v2)
+    participant LLM  as Gemini LLM (llm_service.generate_answer)
+    participant NLI  as DeBERTa-v3-small NLI (verify_grounding)
+    participant TR   as PostgreSQL (query_traces table)
 
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 1 — DOCUMENT INGESTION  (POST /upload)
-    %% WHY: Ingest a PDF, auto-categorise it, embed every chunk,
-    %%      then keep the category knowledge index fresh.
-    %% ══════════════════════════════════════════════════════════
+    Note over Client,TR: ── F6 / F7: RAG Query (POST /groups/{id}/chat) ──
 
-    Note over User,GEM: ── FLOW 1: Document Ingestion (POST /upload) ──
-
-    User->>API: POST /upload (file=*.pdf, category?=optional, bypass_llm?=false)
-    API->>API: Validate content-type == application/pdf (→ 400 if not PDF)
-    API->>API: Save file to uploads/ (os.makedirs + shutil.copyfileobj)
-    API->>PG: INSERT Document (status="uploaded", file_path, file_size)
-    API->>PG: GET or INSERT Category(name=provided OR "general", group_id=NULL)
-    API->>PG: INSERT document_categories link row
-    API->>BG: background_tasks.add_task(process_document_task, doc_id, filename, bypass_llm)
-    API-->>User: 200 {id, filename, status="uploaded", categories}
-
-    Note over BG,GEM: ── Async: process_document_task(doc_id, bypass_llm) ──
-
-    BG->>PG: UPDATE Document SET status="processing"
-    BG->>BG: _extract_text_from_pdf(file_path)  [pypdf PdfReader]
-  
-    alt Text extraction fails (empty PDF / scanned image)
-        BG->>PG: UPDATE Document SET status="failed"
-        Note over BG: Pipeline halts — no chunks to work with
+    Client->>GW: POST /groups/{id}/chat {question, top_k?, document_id?, category?, as_of?} Bearer JWT
+    GW->>GW: jwt.Parse(token) → user_id, organization_id
+    alt JWT invalid or expired
+        GW-->>Client: 401 Unauthorized
     end
-
-    BG->>BG: _chunk_text(text) [RecursiveCharacterTextSplitter, CHUNK_SIZE, CHUNK_OVERLAP]
-
-    alt No chunks produced
-        BG->>PG: UPDATE Document SET status="failed"
-        Note over BG: Pipeline halts
+    GW->>PG: SELECT GroupMember WHERE group_id=id AND user_id=user_id
+    alt Not a member
+        GW-->>Client: 403 Forbidden
     end
+    GW->>PY: Proxy request, inject X-Scope-Org: org_id and X-Scope-Group: group_id headers
 
-    %% ── Auto-Categorization (only if category was blank / "general") ──
-    Note over BG,GEM: ── Auto-Categorization (if no explicit category provided) ──
-
-    BG->>BG: _extract_summary_text_from_pdf → first 5 pages + last 2 pages
-    BG->>BG: _embed_query(summary_text[:1000])  [SentenceTransformer]
-    BG->>MV: search_categories(embedding, top_k=1, group_id=NULL)
-  
-    alt Vector score >= 0.60  [Cosine similarity threshold]
-        BG->>BG: resolved_category = matched category_name
-        Note over BG: Fast path — no LLM needed
-    else Vector score < 0.60 AND bypass_llm=false
-        BG->>GEM: llm_service.classify_ingested_document(text_sample[:4000], existing_categories)
-        GEM-->>BG: predicted category name (or new category string)
-        BG->>BG: resolved_category = LLM response
-    else Vector score < 0.60 AND bypass_llm=true
-        BG->>BG: resolved_category = "general"  [LLM skipped — cost saving mode]
-    end
-
-    alt Gemini 429 / quota exhausted during classification
-        BG->>BG: resolved_category = "general"  [graceful fallback, no crash]
-    end
-
-    BG->>PG: GET or INSERT Category(name=resolved_category, group_id=NULL)
-    BG->>PG: UPDATE document_categories — remove "general" link if a real category was resolved
-    BG->>PG: INSERT document_categories link (doc ↔ resolved_category)
-
-    %% ── Chunk Embedding + Milvus Upsert ──
-    Note over BG,MV: ── Embedding & Vector Store Upsert ──
-
-    BG->>BG: _embed_texts(all_chunks)  [SentenceTransformer batch encode]
-    BG->>MV: milvus_store.upsert_chunks(doc_id, chunks, embeddings)  → returns milvus_ids[]
-    BG->>PG: DELETE DocumentChunk WHERE document_id=doc_id  [clean replace]
-    BG->>PG: bulk INSERT DocumentChunk (chunk_index, content, milvus_id)
-    BG->>PG: UPDATE Document SET status="ready"
-
-    %% ── Post-Ingestion: Category Summary Update ──
-    Note over BG,GEM: ── Post-Ingestion: update_categorical_summary(category, group_id=NULL, bypass_llm) ──
-
-    BG->>BG: Skip if category == "general"  [summaries only for real categories]
-    BG->>PG: Query all Document WHERE category=name AND status="ready"
-  
-    alt bypass_llm=false
-        BG->>BG: _extract_summary_text_from_pdf for each doc (first 5 + last 2 pages)
-        BG->>GEM: model.generate_content(summary_prompt, category_context)
-        GEM-->>BG: 2-3 sentence unified summary text
-    else bypass_llm=true
-        BG->>BG: summary_text = heuristic string: "category covers: {filenames}"
-    end
-
-    alt Gemini 429 during summary generation
-        BG->>BG: Fallback to heuristic summary — no crash
-    end
-
-    BG->>BG: _embed_query(summary_text)
-    BG->>PG: UPDATE Category SET summary=summary_text  [stored for GET /categories-with-docs]
-    BG->>MV: milvus_store.upsert_category_summary(category_name, summary, embedding, group_id=NULL)
-
-    %% ── Post-Ingestion: Taxonomy Consolidation ──
-    Note over BG,GEM: ── Post-Ingestion: consolidate_categories(group_id=NULL, bypass_llm) ──
-
-    alt bypass_llm=true OR fewer than 2 categories exist
-        Note over BG: consolidation skipped
-    else bypass_llm=false AND 2+ categories exist
-        BG->>PG: Query all Category WHERE group_id=NULL → flat list with summaries
-        BG->>GEM: Taxonomy prompt → identify parent/child category relationships
-        GEM-->>BG: JSON array [{parent_category, sub_category_ids[]}]
-      
-        alt Gemini returns [] (no groupings possible) or 429
-            Note over BG: Consolidation no-ops safely
-        end
-
-        loop For each consolidation entry
-            BG->>PG: GET or INSERT parent Category (e.g. "Harry Potter Series")
-            BG->>PG: Append parent category to all sub-category documents
-            BG->>BG: await update_categorical_summary(parent_name, group_id=NULL)
-        end
-    end
-
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 2 — RAG QUERY  (POST /chat)
-    %% WHY: Route a user question through the right knowledge
-    %%      scope, retrieve top-k chunks, synthesize an answer.
-    %% ══════════════════════════════════════════════════════════
-
-    Note over User,GEM: ── FLOW 2: RAG Chat Query (POST /chat) ──
-
-    User->>API: POST /chat {question, document_id?, category?, top_k, bypass_llm?}
-    API->>PG: COUNT Document WHERE status="ready"
-
-    alt No ready documents at all
-        API->>PG: COUNT Document WHERE status IN (uploaded, processing)
+    PY->>PY: start_time = time.time() [pipeline latency timer starts]
+    PY->>PY: query_vector = _embed_query(question) [all-MiniLM-L6-v2, normalize_embeddings=True]
+    PY->>PG: COUNT Document WHERE status='ready'
+    alt ready_count == 0
+        PY->>PG: COUNT Document WHERE status IN ('uploaded','processing')
         alt Processing docs exist
-            API-->>User: "Documents are still processing — please wait"
+            PY-->>GW: {answer: "Documents still processing...", gate_decision: "REFUSE"}
         else No docs at all
-            API-->>User: "No documents in system — upload PDFs first"
+            PY-->>GW: {answer: "No documents available...", gate_decision: "REFUSE"}
         end
     end
 
-    API->>API: _embed_query(question)  [SentenceTransformer]
+    Note over PY,CA: ── Stage 0: Scoped Cache Lookup (F6) ──
 
-    %% ── Mode A: Explicit Document Pin ──
-    alt document_id is provided  [Mode A — Pin to single document]
-        API->>PG: GET Document WHERE id=document_id AND status="ready"
+    PY->>CA: cache.get(org_id, group_id, question, query_vector, as_of)
+    Note over CA: STEP 1 — Exact key generated: katrag:{org_id}:{group_id}:exact:SHA256(question + str(as_of))
+    alt Exact key found in exact_store dict
+        CA-->>PY: Cached payload (zero ML calls, zero Milvus calls)
+        PY-->>GW: Cached payload
+        GW-->>Client: 200 OK [p95 < 15ms]
+    end
+    Note over CA: STEP 2 — Semantic scan: iterate semantic_store[scope] where item.as_of matches
+    alt cosine_similarity(query_vector, stored_embedding) >= 0.97 within same org+group scope
+        CA-->>PY: Semantically matched cached payload
+        PY-->>GW: Cached payload
+        GW-->>Client: 200 OK
+    end
+
+    Note over PY,PG: ── Temporal Point-in-Time Scoping (F7) — only if as_of provided ──
+    alt as_of timestamp provided in request
+        PY->>PG: resolve_active_document_ids(db_session, group_id, as_of)
+        Note over PG: SQL: DocumentVersion JOIN Document WHERE Document.group_id=group_id AND valid_from <= as_of AND (valid_to IS NULL OR valid_to > as_of)
+        PG-->>PY: temporal_doc_ids[] (document IDs that were active at that exact moment)
+        Note over PY: These IDs unlock is_current=false vectors in Milvus for historical point-in-time retrieval
+    end
+
+    Note over PY,MV: ── Stage 1: Hybrid Retrieval Mode Selection ──
+
+    alt F8: document_id provided (Mode A — Single Document Pin)
+        PY->>PG: SELECT Document WHERE id=document_id AND status='ready'
         alt Document not found or not ready
-            API-->>User: 404 / "Document not ready"
+            PY-->>GW: {answer: "Document not ready or does not exist", gate_decision: "REFUSE"}
         end
-        API->>MV: milvus_hits = milvus_store.search(query_embedding, top_k*3, document_id=doc_id)
-        API->>BM25: bm25_hits = bm25_store.search(question, top_k*3, document_id=doc_id)
-        API->>API: hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-        Note over API: Bypasses all category routing — single doc scope
+        PY->>MV: milvus_store.search(question, query_vector, top_k=max(15,top_k*3), document_id=doc_id, organization_id)
+        Note over MV: Scalar filter: document_id==doc_id AND organization_id==org_id. Dense HNSW + Sparse BM25. C++ RRFRanker fuses both.
 
-    %% ── Mode B: Explicit Category Filter ──
-    else category is provided  [Mode B — Manual category filter]
-        API->>PG: Query Document.id JOIN categories WHERE Category.name=category AND status="ready"
+    else F9: category provided (Mode B — Manual Category Scope)
+        PY->>PG: SELECT Document.id JOIN Document.categories WHERE Category.name=category AND Document.status='ready'
         alt No ready docs in that category
-            API-->>User: Empty hits → "No info in that category"
+            PY->>MV: Returns empty hits → falls through to REFUSE gate
         end
-        API->>MV: milvus_hits = milvus_store.search(query_embedding, top_k*3, document_ids=doc_ids)
-        API->>BM25: bm25_hits = bm25_store.search(question, top_k*3, document_ids=doc_ids)
-        API->>API: hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-        Note over API: Scoped to all docs in chosen category
+        PY->>MV: milvus_store.search(question, query_vector, top_k=max(15,top_k*3), document_ids=doc_ids, organization_id)
+        Note over MV: Scalar filter: document_id IN (doc_ids) AND organization_id==org_id. Dense + Sparse.
 
-    %% ── Mode C: Auto 2-Stage Categorical Routing (default) ──
-    else No override provided  [Mode C — Automatic categorical routing]
-        API->>MV: milvus_store.search_categories(query_vector, top_k=5)
-      
-        alt Category score < 0.35 OR no category summaries exist  [Confidence Fallback]
-            Note over API: Low confidence — skipping category routing
-            API->>MV: milvus_hits = milvus_store.search(query_embedding, top_k*3)
-            API->>BM25: bm25_hits = bm25_store.search(question, top_k*3)
-            API->>API: hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-        else Category score >= 0.35  [2-Stage Routing Activated]
+    else F10: No override — Soft Multi-Category Routing (Mode C, default path)
+        PY->>MV: milvus_store.search_categories(query_vector, top_k=3)
+        Note over MV: Searches category_summaries Milvus collection. Returns [{category_name, score}] by cosine similarity.
 
-            alt bypass_llm=false
-                API->>GEM: llm_service.classify_query_category(question, category_candidates)
-                GEM-->>API: chosen_category name  [LLM Call 1 — cheap routing]
-              
-                alt LLM returns category not in candidate list  [Hallucination Guard]
-                    API->>API: chosen_category = candidates[0]["category_name"]  [top vector match]
-                end
-            else bypass_llm=true
-                API->>API: chosen_category = category_matches[0]["category_name"]  [top vector match]
-            end
+        alt Top score < 0.4 OR no categories exist — Global flat search fallback
+            Note over PY: Router confidence too low — skipping category filter, global search
+            PY->>MV: milvus_store.search(question, query_vector, top_k=max(15,top_k*3), organization_id)
+            Note over MV: Scalar: organization_id==org_id AND (is_current==true OR document_id IN temporal_ids)
 
-            alt Gemini 429 during routing
-                API->>API: chosen_category = category_matches[0]["category_name"]  [fallback]
-            end
-
-            API->>PG: Query Document.id WHERE Category.name=chosen_category AND status="ready"
-
-            alt No ready docs in chosen category
-                API->>MV: milvus_hits = milvus_store.search(query_embedding, top_k*3)  [global fallback]
-                API->>BM25: bm25_hits = bm25_store.search(question, top_k*3)
-                API->>API: hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-            else Scoped docs found
-                API->>MV: milvus_hits = milvus_store.search(query_embedding, top_k*3, document_ids=scoped_ids)
-                API->>BM25: bm25_hits = bm25_store.search(question, top_k*3, document_ids=scoped_ids)
-                API->>API: hits = reciprocal_rank_fusion(milvus_hits, bm25_hits)
-            end
+        else Top score >= 0.4 — Soft Routing Activated
+            PY->>PY: top_cats = [m["category_name"] for m in matches]  [Top-3]
+            PY->>PY: routed_categories = top_cats [saved for QueryTrace telemetry]
+            PY->>PG: SELECT Document.id JOIN categories WHERE Category.name IN (top_cats) AND Document.status='ready'
+            PY->>MV: routed_hits = milvus_store.search(question, query_vector, top_k=80, document_ids=routed_doc_ids, organization_id)
+            PY->>MV: global_hits = milvus_store.search(question, query_vector, top_k=40, organization_id)
+            Note over MV: Both: is_current==true OR document_id IN temporal_ids scalar filter applied
+            PY->>PY: Build hit_map from global_hits first
+            PY->>PY: For each routed_hit: hit["score"] = hit["score"] * 1.25
+            Note over PY: 1.25x boost: if same key exists in hit_map, keep whichever score is higher
+            PY->>PY: hits = sorted(hit_map.values(), by score desc)[:max(15, top_k*3)]
         end
     end
 
-    %% ── Stage 2: Cross-Encoder Reranking & Confidence Gate ──
-    Note over API: ── STAGE 2: CROSS-ENCODER RERANKING ──
-    API->>API: scores = CrossEncoder.predict([query, chunk] for chunk in hits)
-    API->>API: Sort hits descending by scores, keep top_k
-  
-    alt hits[0].cross_score < CROSS_ENCODER_THRESHOLD
-        API-->>Client: 200 {answer="I could not find sufficiently relevant information..."}
-        Note over API,Client: Retrieval Confidence Gate Triggered — Halt execution
+    alt hits is empty after all retrieval paths
+        PY-->>GW: {answer: "Documents do not contain sufficient information", gate_decision: "REFUSE"}
     end
 
-    %% ── Answer Synthesis ──
-    Note over API,GEM: ── LLM Call 2: Answer Synthesis ──
+    Note over PY,CX: ── Stage 2: Cross-Encoder Reranking and Confidence Gate (F11) ──
 
-    alt No hits returned from Milvus
-        API-->>User: "Documents do not contain enough information to answer"
+    PY->>CX: CROSS_ENCODER_INSTANCE.predict([[question, hit["content"]] for hit in hits])
+    Note over CX: Model: cross-encoder/ms-marco-MiniLM-L-6-v2. Batch scores all (query, chunk) pairs as pairwise logits.
+    CX-->>PY: scores[] (one raw logit float per hit)
+
+    PY->>PY: hit["cross_score"] = float(scores[idx]) for each hit
+    PY->>PY: hit["prob_relevant"] = sigmoid(cross_score) where sigmoid(x) = 1 / (1 + exp(-x))
+    PY->>PY: hits.sort(key=prob_relevant, reverse=True) → keep top_k
+
+    PY->>PY: top_prob = hits[0]["prob_relevant"]
+
+    alt top_prob < 0.35 — REFUSE gate
+        PY->>PY: gate_decision = "REFUSE"
+        PY-->>GW: {answer: "I could not find sufficiently relevant information...", citations: [], gate_decision: "REFUSE"}
+        Note over PY: Gemini is NOT called. Zero token cost. Latency terminates here.
+    else 0.35 <= top_prob < 0.70 — HEDGED gate
+        PY->>PY: gate_decision = "HEDGED"
+    else top_prob >= 0.70 — ANSWER gate
+        PY->>PY: gate_decision = "ANSWER"
     end
 
-    API->>API: Build context = "[Source N] {chunk_content}" for each hit
-    API->>API: Build citations = [{document_id, chunk_index, score, content_preview}]
+    Note over PY,PG: ── Stage 3: Structured Citation Metadata Enrichment ──
+    loop For each hit in top_k
+        PY->>PG: SELECT DocumentChunk WHERE document_id=hit.document_id AND chunk_index=hit.chunk_index
+        PG-->>PY: chunk_db.page_from, chunk_db.section_path, chunk_db.parent_chunk_id
+        alt chunk has parent_chunk_id set — Parent-Child retrieval path
+            PY->>PG: SELECT DocumentChunk WHERE id=parent_chunk_id
+            PG-->>PY: parent.content [richer, more coherent parent passage replaces child as context]
+        end
+        PY->>PY: citations.append({document_id, chunk_id: "docid_chunkidx", page_from, section_path, score: cross_score, prob_relevant, content_preview: content[:220]})
+    end
+    PY->>PY: context = "[Source N] (Page P, Section: S): {hit.content}" joined for each hit
 
-    alt bypass_llm=false
-        API->>GEM: llm_service.generate_answer(question, context)  [streaming or blocking]
-        GEM-->>API: Grounded answer text
+    Note over PY,LLM: ── Stage 4: LLM Answer Synthesis ──
+    PY->>LLM: generate_answer(question, context, bypass_llm)
+    alt bypass_llm=false — Normal path
+        LLM-->>PY: Grounded answer string referencing context chunks
     else bypass_llm=true OR Gemini 429
-        API->>API: Mock fallback: "⚠️ Gemini quota hit — showing raw Milvus matches"
-        Note over API: Top 3 chunk previews rendered as bullet list
+        PY->>PY: answer = "Gemini quota hit — showing raw Milvus match previews"
+    end
+    alt gate_decision == "HEDGED"
+        PY->>PY: answer = "Based on limited available documentation, " + answer
     end
 
-    API-->>User: {answer, citations[{document_id, chunk_index, score, content_preview}]}
+    Note over PY,NLI: ── Stage 5: NLI Grounding Verification (F12) ──
+    PY->>NLI: verify_grounding(answer, [hit["content"] for hit in hits])
+    Note over NLI: Model: cross-encoder/nli-deberta-v3-small. Runs softmax([contradiction, neutral, entailment]) on (premise=chunk, hypothesis=answer) pairs. Returns entailment probability.
+    NLI-->>PY: grounding_score (float 0.0-1.0)
 
-    %% ══════════════════════════════════════════════════════════
-    %% FLOW 3 — SYSTEM RESET  (POST /reset)
-    %% WHY: Wipe all ingested data (disk files, Milvus vectors,
-    %%      Postgres rows) and restart ID sequences for clean testing.
-    %% ══════════════════════════════════════════════════════════
+    PY->>PY: payload = {answer, citations, gate_decision, grounding_score}
 
-    Note over User,MV: ── FLOW 3: Full System Reset (POST /reset) ──
+    alt gate_decision != "REFUSE"
+        PY->>CA: cache.set(org_id, group_id, question, query_vector, payload, as_of)
+        Note over CA: Writes to exact_store[katrag:{org_id}:{group_id}:exact:{sha256}] AND appends to semantic_store[scope] list
+    end
 
-    User->>API: POST /reset
-    API->>API: services.reset_system()
-    API->>API: Remove all files from uploads/ directory (os.remove)
-    API->>MV: milvus_store.delete_all_chunks()  [drops all vectors]
-    API->>PG: DELETE DocumentCategory, DocumentChunk, Document, Category
-    API->>PG: ALTER SEQUENCE documents_id_seq RESTART WITH 1  [PostgreSQL only]
-    API-->>User: {status: "success"}
+    Note over PY,TR: ── F13: Passive Telemetry — Non-Blocking (try/except) ──
+    PY->>PY: latency_ms = int((time.time() - start_time) * 1000)
+    PY->>PY: retrieved_chunk_ids = [c["chunk_id"] for c in citations]
+    PY->>TR: INSERT QueryTrace(organization_id, group_id, query_text, routed_categories, gate_decision, grounding_score, latency_ms, retrieved_chunk_ids, created_at=utcnow())
+    alt DB write fails (connection error, schema mismatch)
+        TR-->>PY: Exception caught silently — print(f"Telemetry logging failed: {e}")
+        Note over PY: Telemetry NEVER crashes the user query. Observability is fully passive.
+    end
+
+    PY-->>GW: 200 {answer, citations[], gate_decision, grounding_score}
+    GW-->>Client: 200 OK
 ```
+
+---
+
+## Diagram 3 — Multi-Tenant Security & Cache Isolation Boundary
+
+**WHY this exists:**
+The Loaded Gun Principle (§13.2): A semantic cache keyed solely on query text is a P0 data leak. If Org A and Org B ask the exact same question, a naive system hands Org A's HR policies to Org B's employees. KatRAG makes organization_id and group_id mathematically inseparable from every cache key, with the Milvus C++ scalar filter as the defense-in-depth backstop.
+
+```mermaid
+flowchart TD
+    subgraph "Multi-Tenant Query Isolation"
+        Q1["Tenant A\n'What is the return policy?'\norg_id=org_A, group_id=1"] --> KA[cache.generate_exact_key]
+        Q2["Tenant B\n'What is the return policy?'\norg_id=org_B, group_id=1"] --> KB[cache.generate_exact_key]
+
+        KA --> KEY_A["katrag:org_A:1:exact:SHA256('What is the return policy?None')"]
+        KB --> KEY_B["katrag:org_B:1:exact:SHA256('What is the return policy?None')"]
+
+        KEY_A --> STORE_A[(exact_store — org_A partition)]
+        KEY_B --> STORE_B[(exact_store — org_B partition)]
+
+        STORE_A -- "HIT — org_A data only" --> RET_A["Org A: Policy A payload"]
+        STORE_B -- "MISS — keys are disjoint by construction" --> MISS_B["Cache Miss → Full ML Pipeline"]
+
+        MISS_B --> EMB["_embed_query(question) → 384-dim vector"]
+        EMB --> MIL["milvus_store.search(query_vector, organization_id='org_B')"]
+        MIL --> FILTER["C++ Scalar Filter at retrieval layer:\norganization_id == 'org_B'\nAND is_current == true"]
+        FILTER -- "org_A and org_C vectors physically excluded" --> CHUNKS["Only org_B chunks returned"]
+        CHUNKS --> PIPE["CrossEncoder → Confidence Gate → Gemini → NLI"]
+        PIPE --> RET_B["Org B: Policy B payload"]
+        RET_B --> CACHE_SET["cache.set() writes to katrag:org_B:1:...\nNever touches org_A partition"]
+    end
+
+    subgraph "Cache Invalidation on Ingestion"
+        EV["Kafka: doc.indexed or doc.superseded\n{organization_id, group_id}"] --> INV["worker.py:\ncache.invalidate_scope(org_id, group_id)"]
+        INV --> DEL_E["Delete all exact_store keys where\nkey.startswith('katrag:{org_id}:{group_id}:')"]
+        INV --> DEL_S["del semantic_store['katrag:{org_id}:{group_id}']"]
+        DEL_E --> GUAR["Guarantee: stale cached answers\nare impossible after any\ningestion or supersession event"]
+        DEL_S --> GUAR
+    end
+```
+
+---
+
+## Appendix A: Key Data Models
+
+| SQLAlchemy Model | Table | Key Fields |
+|---|---|---|
+| `Organization` | `organizations` | `id (str)`, `plan_tier`, `status`, `settings (JSON)` |
+| `Group` | `groups` | `id (int)`, `organization_id (FK)`, `name`, `created_by (FK User)` |
+| `GroupMember` | `group_members` | `group_id (FK)`, `user_id (FK)`, `joined_at` |
+| `User` | `users` | `id (int)`, `organization_id (FK)`, `email (unique)`, `hashed_password`, `role` |
+| `Document` | `documents` | `id (int)`, `organization_id (FK)`, `group_id (FK)`, `filename`, `status`, `file_path`, `file_size` |
+| `DocumentVersion` | `document_versions` | `id (str)`, `document_id (FK)`, `version_num`, `is_current (bool)`, `valid_from`, `valid_to`, `content_hash`, `object_key`, `authority_score`, `index_version` |
+| `DocumentChunk` | `document_chunks` | `id (int)`, `document_id (FK)`, `chunk_index`, `content`, `context_prefix`, `milvus_id`, `parent_chunk_id (self-FK)`, `page_from`, `section_path`, `char_start`, `char_end` |
+| `Category` | `categories` | `id (int)`, `name`, `group_id (FK)`, `summary` |
+| `DocumentCategory` | `document_categories` | `document_id (FK)`, `category_id (FK)` |
+| `QueryTrace` | `query_traces` | `id (UUID)`, `organization_id`, `group_id`, `query_text`, `routed_categories (JSON)`, `gate_decision`, `grounding_score (float)`, `latency_ms (int)`, `retrieved_chunk_ids (JSON)`, `created_at` |
+
+---
+
+## Appendix B: Key Configuration Constants
+
+| Constant | Source File | Default | Purpose |
+|---|---|---|---|
+| `EMBEDDING_MODEL` | `config.py` | `sentence-transformers/all-MiniLM-L6-v2` | Dense embedding model (384-dim) |
+| `CROSS_ENCODER_MODEL` | `config.py` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Pairwise reranking model |
+| `CROSS_ENCODER_THRESHOLD` | `config.py` | `0.35` | Confidence gate hard cutoff — below = REFUSE |
+| `CHUNK_SIZE` | `config.py` | _(configured)_ | Max chars per RecursiveCharacterTextSplitter chunk |
+| `CHUNK_OVERLAP` | `config.py` | _(configured)_ | Overlap chars between consecutive chunks |
+| `KAFKA_BROKER_URL` | `config.py` | `redpanda:9092` | Redpanda broker address |
+| `MINIO_BUCKET_NAME` | `config.py` | `katrag-docs` | S3 bucket for raw PDF storage |
+| `MINIO_ENDPOINT` | `config.py` | `minio:9000` | MinIO service address |
+| `MILVUS_COLLECTION` | `config.py` | `document_chunks` | Primary Milvus collection |
+| Kafka consumer group | `worker.py` | `katrag-ingestion-group` | Consumer group ID (used by KEDA for lag-based autoscaling) |
+| Worker temp dir | `worker.py` | `/tmp/katrag_processing/` | Temp directory for PDF downloads during ingestion |
+| Semantic cache cosine threshold | `cache.py` | `0.97` | Cosine floor for semantic cache hit (within same org+group scope) |
+| Category routing activation score | `services.py` | `0.4` | Milvus category score floor for soft routing to activate |
+| Category vector match (ingestion) | `services.py` | `0.60` | Fast-path floor — at or above, doc auto-categorizes without LLM |
+| Routed hit score multiplier | `services.py` | `1.25x` | Boost applied to hits from soft-routed category documents |
+| Soft router top-K categories | `services.py` | `3` | Number of top categories proposed per query |
+| NLI grounding model | `services.py` | `cross-encoder/nli-deberta-v3-small` | NLI entailment verifier |
