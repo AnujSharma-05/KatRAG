@@ -524,6 +524,7 @@ async def process_document_task(doc_id: int, filename: str, bypass_llm: bool = F
 
 import math
 import time
+import uuid
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
@@ -619,6 +620,13 @@ async def answer_question(question: str, document_id: int | None = None, categor
 
     finally:
         db.close()
+
+    # POST-RETRIEVAL ASSERTION (DEFENSE-IN-DEPTH)
+    for chunk in hits:
+        if chunk.get("organization_id") != organization_id:
+            raise Exception(f"CRITICAL SECURITY EXCEPTION: Cross-tenant leakage detected! Chunk org {chunk.get('organization_id')} != Scope org {organization_id}. Trace ID: {uuid.uuid4()}")
+        if group_ids is not None and chunk.get("group_id") not in group_ids:
+            raise Exception(f"CRITICAL SECURITY EXCEPTION: Cross-group leakage detected! Chunk group {chunk.get('group_id')} not in Scope groups {group_ids}. Trace ID: {uuid.uuid4()}")
 
     if not hits:
         return {"answer": "The provided documents do not contain sufficient information.", "citations": [], "gate_decision": "REFUSE"}
@@ -802,6 +810,8 @@ async def reset_system() -> None:
         print("STEP 7")
 
         db.close()
+
+
 
 
 
