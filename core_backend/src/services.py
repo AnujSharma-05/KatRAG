@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import os
 from datetime import datetime
 from typing import Any, Optional
@@ -165,7 +165,7 @@ def _embed_query(text: str) -> list[float]:
     return _embed_texts([text])[0]
 
 
-async def update_categorical_summary(category_name: str, group_id: int | None = None, bypass_llm: bool = False) -> None:
+async def update_categorical_summary(category_name: str, group_ids: list[int] | None = None, bypass_llm: bool = False) -> None:
     """Consolidate document contents in the category and update its Milvus summary embedding."""
     if not category_name or category_name == "general":
         return
@@ -528,7 +528,7 @@ import time
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
 
-async def answer_question(question: str, document_id: int | None = None, category: str | None = None, top_k: int = 5, bypass_llm: bool = False, organization_id: str = "org_default", group_id: int | None = None, as_of: str | None = None) -> dict[str, Any]:
+async def answer_question(question: str, document_id: int | None = None, category: str | None = None, top_k: int = 5, bypass_llm: bool = False, organization_id: str = "org_default", group_ids: list[int] | None = None, as_of: str | None = None) -> dict[str, Any]:
     """Retrieve relevant chunks from Milvus and build a grounded response payload."""
     start_time = time.time()
     routed_categories = []
@@ -562,7 +562,7 @@ async def answer_question(question: str, document_id: int | None = None, categor
                 return {"answer": "Document not ready or does not exist.", "citations": [], "gate_decision": "REFUSE"}
             
             search_k = max(15, top_k * 3)
-            hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, document_id=document_id, organization_id=organization_id)
+            hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, document_id=document_id, organization_id=organization_id, group_ids=group_ids)
 
         # 2. Specific Category Filter
         elif category is not None:
@@ -572,7 +572,7 @@ async def answer_question(question: str, document_id: int | None = None, categor
             doc_ids = [r[0] for r in doc_ids_query]
             if doc_ids:
                 search_k = max(15, top_k * 3)
-                hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, document_ids=doc_ids, organization_id=organization_id)
+                hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, document_ids=doc_ids, organization_id=organization_id, group_ids=group_ids)
 
         # 3. Soft Multi-Category Routing (Issue 7)
         else:
@@ -585,7 +585,7 @@ async def answer_question(question: str, document_id: int | None = None, categor
             if not matches or matches[0]["score"] < 0.4:
                 print("Router confidence low, skipping category filter. Global search initiated.")
                 search_k = max(15, top_k * 3)
-                hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, organization_id=organization_id)
+                hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=search_k, organization_id=organization_id, group_ids=group_ids)
             else:
                 top_cats = [m["category_name"] for m in matches]
                 print(f"Soft Routing to Top-3 categories: {top_cats}")
@@ -597,9 +597,9 @@ async def answer_question(question: str, document_id: int | None = None, categor
                 
                 routed_hits = []
                 if doc_ids:
-                    routed_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=80, document_ids=doc_ids, organization_id=organization_id)
+                    routed_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=80, document_ids=doc_ids, organization_id=organization_id, group_ids=group_ids)
                 
-                global_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=40, organization_id=organization_id)
+                global_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=40, organization_id=organization_id, group_ids=group_ids)
                 
                 # Merge and apply 1.25x boost to routed hits
                 hit_map = {}
@@ -802,6 +802,8 @@ async def reset_system() -> None:
         print("STEP 7")
 
         db.close()
+
+
 
 
 

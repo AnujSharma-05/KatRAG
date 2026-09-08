@@ -70,6 +70,7 @@ class MilvusStore:
             # Enable analyzer for native BM25
             schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=65535, enable_analyzer=True)
             schema.add_field(field_name="is_current", datatype=DataType.BOOL, default_value=True)
+            schema.add_field(field_name="group_id", datatype=DataType.INT64, nullable=True)
             
             # Add sparse vector field for BM25
             schema.add_field(field_name="sparse_vector", datatype=DataType.SPARSE_FLOAT_VECTOR)
@@ -138,7 +139,7 @@ class MilvusStore:
         client.load_collection(collection_name=self.category_collection_name)
         print(f"ALL COLLECTIONS ENSURED & LOADED")
 
-    def upsert_chunks(self, document_id: int, chunks: list[str], embeddings: list[list[float]], organization_id: str = "org_default") -> list[int]:
+    def upsert_chunks(self, document_id: int, chunks: list[str], embeddings: list[list[float]], organization_id: str = "org_default", group_id: int | None = None) -> list[int]:
         self.ensure_collection()
         client = self._get_client()
 
@@ -152,6 +153,7 @@ class MilvusStore:
                 "chunk_index": idx,
                 "content": chunks[idx],
                 "is_current": True,
+                "group_id": group_id,
             }
             for idx in range(len(chunks))
         ]
@@ -170,12 +172,16 @@ class MilvusStore:
 
         return [int(i) for i in result.get("ids", [])]
 
-    def search(self, query_text: str, query_embedding: list[float], top_k: int = 5, document_id: int | None = None, document_ids: list[int] | None = None, organization_id: str = "org_default", valid_document_ids: list[str] | None = None, is_temporal: bool = False) -> list[dict[str, Any]]:
+    def search(self, query_text: str, query_embedding: list[float], top_k: int = 5, document_id: int | None = None, document_ids: list[int] | None = None, organization_id: str = "org_default", valid_document_ids: list[str] | None = None, is_temporal: bool = False, group_ids: list[int] | None = None) -> list[dict[str, Any]]:
         self.ensure_collection()  # also loads the collection
         client = self._get_client()
         ef_value = max(MILVUS_EF_SEARCH, top_k)
         
         filters = [f"organization_id == '{organization_id}'"]
+        
+        if group_ids:
+            ids_str = ", ".join(str(g) for g in group_ids)
+            filters.append(f"group_id in [{ids_str}]")
         
         if is_temporal and valid_document_ids is not None:
             if not valid_document_ids:
@@ -219,7 +225,7 @@ class MilvusStore:
             reqs=[dense_req, sparse_req],
             ranker=RRFRanker(k=60),
             limit=top_k,
-            output_fields=["document_id", "chunk_index", "content", "organization_id", "is_current"]
+            output_fields=["document_id", "chunk_index", "content", "organization_id", "is_current", "group_id"]
         )
 
         formatted: list[dict[str, Any]] = []
@@ -233,6 +239,8 @@ class MilvusStore:
                         "document_id": int(entity.get("document_id")),
                         "chunk_index": int(entity.get("chunk_index")),
                         "content": str(entity.get("content")),
+                    "organization_id": str(entity.get("organization_id")),
+                    "group_id": int(entity.get("group_id")) if entity.get("group_id") is not None else None,
                     }
                 )
         return formatted
@@ -376,6 +384,9 @@ print("creating milvus_store singleton")
 milvus_store = MilvusStore()
 
 print("milvus_store singleton created")
+
+
+
 
 
 
