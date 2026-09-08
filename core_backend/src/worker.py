@@ -1,4 +1,4 @@
-﻿import json
+import json
 import logging
 import os
 import asyncio
@@ -29,6 +29,7 @@ def initialize_minio():
     return client
 
 def run_worker():
+    retry_counts = {}
     # 1. Initialize MinIO
     minio_client = initialize_minio()
 
@@ -97,7 +98,7 @@ def run_worker():
                         logger.error(f"Document {document_id} not found in DB")
                         continue
                         
-                    if doc.status in ["indexed", "processing", "failed"]:
+                    if doc.status in ["indexed", "failed"]:
                         logger.warning(f"Document {document_id} is already in state '{doc.status}'. Skipping.")
                         continue
                     
@@ -154,6 +155,26 @@ def run_worker():
                 
             except Exception as e:
                 logger.error(f"Error processing message: {e}")
+                doc_id = None
+                try:
+                    p = json.loads(msg.value().decode('utf-8'))
+                    doc_id = p.get('document_id')
+                except:
+                    pass
+                if doc_id:
+                    retry_counts[doc_id] = retry_counts.get(doc_id, 0) + 1
+                    if retry_counts[doc_id] > 3:
+                        logger.error(f"Document {doc_id} failed > 3 times. Sending to DLQ.")
+                        producer.produce("doc.dlq", value=msg.value())
+                        db_fail = SessionLocal()
+                        try:
+                            doc_fail = db_fail.query(models.Document).filter(models.Document.id == doc_id).first()
+                            if doc_fail:
+                                doc_fail.status = "failed"
+                                db_fail.commit()
+                        finally:
+                            db_fail.close()
+                        continue
                 
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received. Shutting down worker...")
@@ -163,6 +184,8 @@ def run_worker():
 
 if __name__ == "__main__":
     run_worker()
+
+
 
 
 
