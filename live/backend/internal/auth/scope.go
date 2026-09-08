@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -28,9 +29,10 @@ func ResolveScope(ctx context.Context, userID string) (*Scope, error) {
 		scope.OrganizationID = "NASA"
 		scope.GroupIDs = []string{"3"}
 	} else {
-		scope.OrganizationID = "DEFAULT_ORG"
-		scope.GroupIDs = []string{"0"}
+		return nil, errors.New("unauthorized: principal not found")
 	}
 
 	return scope, nil
 }
+
+

@@ -3,12 +3,19 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var JWTSecret = []byte("super-secret-katrag-key-change-in-prod")
+func getJWTSecret() []byte {
+	secret := os.Getenv("KATRAG_JWT_SECRET")
+	if secret == "" {
+		panic("KATRAG_JWT_SECRET environment variable is not set")
+	}
+	return []byte(secret)
+}
 
 // ParseJWT validates a Bearer token and returns the UserID
 func ParseJWT(authHeader string) (string, error) {
@@ -27,7 +34,7 @@ func ParseJWT(authHeader string) (string, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return JWTSecret, nil
+		return getJWTSecret(), nil
 	})
 
 	if err != nil {
@@ -44,3 +51,4 @@ func ParseJWT(authHeader string) (string, error) {
 
 	return "", errors.New("invalid token")
 }
+
