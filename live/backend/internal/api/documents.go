@@ -126,6 +126,10 @@ func UploadDocument(c *fiber.Ctx) error {
 		versionID, docID, currentVersionNum,
 	)
 	if err != nil {
+		if strings.Contains(err.Error(), "23P01") {
+			log.Printf("DB insert version conflict: %v", err)
+			return c.Status(409).JSON(fiber.Map{"error": "Concurrent version update detected. Please retry."})
+		}
 		log.Printf("DB insert version error: %v", err)
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create document version record"})
 	}
@@ -176,6 +180,10 @@ func UploadDocument(c *fiber.Ctx) error {
 
 	err = tx.Commit()
 	if err != nil {
+		if strings.Contains(err.Error(), "23P01") {
+			log.Printf("DB commit conflict: %v", err)
+			return c.Status(409).JSON(fiber.Map{"error": "Concurrent version update detected. Please retry."})
+		}
 		log.Printf("DB commit error: %v", err)
 		return c.Status(500).JSON(fiber.Map{"error": "Transaction commit failed"})
 	}
