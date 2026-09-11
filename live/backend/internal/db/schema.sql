@@ -5,3 +5,11 @@ CREATE TABLE IF NOT EXISTS outbox_events (
     status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+ALTER TABLE document_versions 
+ADD CONSTRAINT no_overlapping_versions 
+EXCLUDE USING gist (
+    document_id WITH =, 
+    tstzrange(valid_from, COALESCE(valid_to, 'infinity'), '[)') WITH &&
+);
