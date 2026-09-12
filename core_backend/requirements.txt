@@ -17,3 +17,5 @@ email-validator
 
 confluent-kafka
 minio
+
+optimum[onnxruntime]
