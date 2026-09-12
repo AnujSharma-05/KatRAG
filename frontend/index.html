@@ -1,13 +1,115 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KatRAG Diagnostic Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        katrag: { 900: '#0B1121', 800: '#111827', 700: '#1F2937' }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@00;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0B1121; color: #E5E7EB; }
+        .glass-panel {
+            background: rgba(31, 41, 55, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(75,85,99,0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(75,85,99,0.8); }
+        .terminal-log { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col">
+    <header class="glass-panel shrink-0 border-b border-gray-800 px-6 py-4 flex items-center justify-between z-10">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold tracking-tighter">KR</div>
+            <div>
+                <h1 class="text-xl font-bold text-white tracking-tight leading-tight">KatRAG</h1>
+                <p lass="text-xs text-blue-400 font-mono tracking-widest uppercase">System Diagnostics V1</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2 text-xs font-mono bg-gray-900 px-3 py-1.5 rounded border border-gray-700">
+                <span class="relative flex h-2 w-2 mr-1">
+                  <span id="ws-ping-anim" class="animate-ping absolute inline-flex h-fullÜµ™Õ±°É½Õ¹‘•µ™Õ±°‰œµÉ•´ÐÀÀ½Á…¥Ñä´ÜÔˆøð½ÍÁ…¸ø(€€€€€€€€€€€€€€€€€€ñÍÁ…¸¥ô‰ÝÌµ‘½Ðˆ±…ÍÌô‰É•±…Ñ¥Ù”¥¹±¥¹”µ™±•àÉ½Õ¹‘•µ™Õ±° ´ÈÜ´È‰œµÉ•´ÔÀÀˆøð½ÍÁ…¸ø(€€€€€€€€€€€€€€€€ð½ÍÁ…¸ø(€€€€€€€€€€€€€€€€ñÍÁ…¸¥ô‰ÝÌµÍÑ…ÑÕÌµÑ•áÐˆ±…ÍÌô‰Ñ•áÐµÉ…ä´ÐÀÀˆù]Lè¥Í½¹¹•Ñ•ð½ÍÁ…¸ø(€€€€€€€€€€€€ð½‘¥Øø(€€€€€€€€ð½‘¥Øø(€€€€ð½¡•…‘•Èø((€€€€ñµ…¥¸±…ÍÌô‰™±•à´Ä™±•à½Ù•É™±½Üµ¡¥‘‘•¸À´Ø…À´Øµ…àµÜµlÄØÀÁÁátµàµ…ÕÑ¼Üµ™Õ±°ˆø(€€€€€€€€ñ‘¥Ø±…ÍÌô‰Ü´Ä¼Ì™±•à™±•àµ½°…À´Ø½Ù•É™±½Üµäµ…ÕÑ¼ÁÈ´Èˆø(€€€€€€€€€€€€ñÍ•Ñ¥½¸±…ÍÌô‰±…ÍÌµÁ…¹•°É½Õ¹‘•µá°À´Ôˆø(€€€€€€€€€€€€€€€€ñ È±…ÍÌô‰Ñ•áÐµÍ´™½¹ÐµÍ•µ¥‰½±Ñ•áÐµÉ…ä´ÌÀÀÕÁÁ•É…Í”ÑÉ…­¥¹œµÝ¥‘•ÍÐµˆ´Ðˆù½¹Ñ•áÐ½¹™¥ÕÉ…Ñ¥½¸ð½ Èø(€€€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰ÍÁ…”µä´Ðˆø(€€€€€€€€€€€€€€€€€€€€ñ‘¥Øø(€€€€€€€€€€€€€€€€€€€€€€€€ñ±…‰•°±…ÍÌô‰‰±½¬Ñ•áÐµáÌ™½¹Ðµµ•‘¥Õ´Ñ•áÐµÉ…ä´ÐÀÀµˆ´ÄˆùA$	…Í”UI0ð½±…‰•°ø(€€€€€€€€€€€€€€€€€€€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰Ñ•áÐˆ¥ô‰™œµÕÉ°ˆÙ…±Õ”ô‰¡ÑÑÀè¼½±½…±¡½ÍÐèàÀàÀˆ±…ÍÌô‰Üµ™Õ±°‰œµÉ…ä´äÀÀ‰½É‘•È‰½É‘•ÈµÉ…ä´ÜÀÀÉ½Õ¹‘•µ±œÁà´ÌÁä´ÈÑ•áÐµÍ´™½ÕÌé‰½É‘•Èµ‰±Õ”´ÔÀÀ½ÕÑ±¥¹”µ¹½¹”ˆø(€€€€€€€€€€€€€€€€€€€€ð½‘¥Øø(€€€€€€€€€€€€€€€€€€€€ñ‘¥Øø(€€€€€€€€€€€€€€€€€€€€€€€€ñ±…‰•°±…ÍÌô‰‰±½¬Ñ•áÐµáÌ™½¹Ðµµ•‘¥Õ´Ñ•áÐµÉ…ä´ÐÀÀµˆ´Äˆù)]PQ½­•¸ð½±…‰•°ø(€€€€€€€€€€€€€€€€€€€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰Á…ÍÍÝ½Éˆ¥ô‰™œµ©ÝÐˆ±…ÍÌô‰Üµ™Õ±°‰œµÉ…ä´äÀÀ‰½É‘•È‰½É‘•ÈµÉ…ä´ÜÀÀÉ½Õ¹‘•µ±œÁà´ÌÁä´ÈÑ•áÐµÍ´™½ÕÌé‰½É‘•Èµ‰±Õ”´ÔÀÀ½ÕÑ±¥¹”µ¹½¹”ˆø(€€€€€€€€€€€€€€€€€€€€ð½‘¥Øø(€€€€€€€€€€€€€€€€€€€€ñ‘¥Øø(€€€€€€€€€€€€€€€€€€€€€€€€ñ±…‰•°±…ÍÌô‰‰±½¬Ñ•áÐµáÌ™½¹Ðµµ•‘¥Õ´Ñ•áÐµÉ…ä´ÐÀÀµˆ´ÄˆùÉ½ÕÀ%ð½±…‰•°ø(€€€€€€€€€€€€€€€€€€€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰¹Õµ‰•Èˆ¥ô‰™œµÉ½ÕÀˆÙ…±Õ”ôˆÄˆ±…ÍÌô‰Üµ™Õ±°‰œµÉ…ä´äÀÀ‰½É‘•È‰½É‘•ÈµÉ…ä´ÜÀÀÉ½Õ¹‘•µ±œÁà´ÌÁä´ÈÑ•áÐµÍ´™½ÕÌé‰½É‘•Èµ‰±Õ”´ÔÀÀ½ÕÑ±¥¹”µ¹½¹”ˆø(€€€€€€€€€€€€€€€€€€€€ð½‘¥Øø(€€€€€€€€€€€€€€€€€€€€ñ‰ÕÑÑ½¸½¹±¥¬ô‰½¹¹•ÑMåÍÑ•´ ¤ˆ±…ÍÌô‰Üµ™Õ±°‰œµ‰±Õ”´ØÀÀ¡½Ù•Èé‰œµ‰±Õ”´ÔÀÀÑ•áÐµÝ¡¥Ñ”™½¹Ðµµ•‘¥Õ´Áä´ÈÉ½Õ¹‘•µ±œÑÉ…¹Í¥Ñ¥½¸µ½±½ÉÌˆù½¹¹•Ð€˜ÕÑ¡•¹Ñ¥…Ñ”ð½‰ÕÑÑ½¸ø(€€€€€€€€€€€€€€€€ð½‘¥Øø(€€€€€€€€€€€€ð½Í•Ñ¥½¸ø(€€€€€€€€€€€€(€€€€€€€€€€€€ñÍ•Ñ¥½¸±…ÍÌô‰±…ÍÌµÁ…¹•°É½Õ¹‘•µá°À´Ô™±•à´Ä™±•à™±•àµ½°ˆø(€€€€€€€€€€€€€€€€ñ È±…ÍÌô‰Ñ•áÐµÍ´™½¹ÐµÍ•µ¥‰½±Ñ•áÐµÉ…ä´ÌÀÀÕÁÁ•É…Í”ÑÉ…­¥¹œµÝ¥‘•ÍÐµˆ´ÐˆùÙ•¹ÐµÉ¥Ù•¸%¹•ÍÑ¥½¸ð½ Èø(€€€€€€€€€€€€€€€€ñ™½É´¥ô‰ÕÁ±½…‘½É´ˆ½¹ÍÕ‰µ¥Ðô‰¡…¹‘±•UÁ±½…¡•Ù•¹Ð¤ˆ±…ÍÌô‰ÍÁ…”µä´Ðµˆ´Ðˆø(€€€€€€€€€€€€€€€€€€€€ñ¥¹ÁÕÐÑåÁ”ô‰™¥±”ˆ¥ô‰™¥±”µÕÁ±½…ˆ…•ÁÐô‰…ÁÁ±¥…Ñ¥½¸½Á‘˜ˆ±…ÍÌô‰‰±½¬Üµ™Õ±°Ñ•áÐµÍ´Ñ•áÐµÉ…ä´ÔÀÀ™¥±”éµÈ´Ð™¥±”éÁä´È™¥±”éÁà´Ð™¥±”éÉ½Õ¹‘•™¥±”é‰½É‘•È´À™¥±”éÑ•áÐµÍ´™¥±”é™½¹ÐµÍ•µ¥‰½±™¥±”é‰œµÉ…ä´àÀÀ™¥±”éÑ•áÐµ‰±Õ”´ÔÀÀ¡½Ù•Èé™¥±”é‰œµÉ…ä´ÜÀÀˆø(€€€€€€€€€€€€€€€€€€€€ñ‰ÕÑÑ½¸ÑåÁ”ô‰ÍÕ‰µ¥Ðˆ±…ÍÌô‰Üµ™Õ±°‰œµÉ…ä´àÀÀ¡½Ù•Èé‰œµÉ…ä´ÜÀÀ‰½É‘•È‰½É‘•ÈµÉ…ä´ØÀÀÑ•áÐµÝ¡¥Ñ”™½¹Ðµµ•‘¥Õ´Ñ•áÐµÍ´Áä´ÈÁà´ÐÉ½Õ¹‘•µ±œˆùEÕ•Õ”UÁ±½…Ñ¼-…™­„ð½‰ÕÑÑ½¸ø(€€€€€€€€€€€€€€€€ð½™½É´ø(€€€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰™±•à´Ä‰œµlŒÀÔÀàÄÁtÉ½Õ¹‘•µ±œ‰½É‘•È‰½É‘•ÈµÉ…ä´àÀÀÀ´Ì½Ù•É™±½Üµ¡¥‘‘•¸™±•à™±•àµ½°ˆø(€€€€€€€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰Ñ•áÐµlÄÁÁát™½¹Ðµµ½¹¼Ñ•áÐµÉ…ä´ÔÀÀµˆ´È‰½É‘•Èµˆ‰½É‘•ÈµÉ…ä´àÀÀÁˆ´Äˆøù|IA9]=I-HY9Q</div>
+                    <div id="ws-event-log" class="terminal-log text-gray-400 flex-1 overflow-y-auto space-y-1"></div>
+                </div>
+            </section>
+        </div>
+
+        <div class="w-2/3 flex flex-col gap-6">
+            <section class="glass-panel rounded-xl p-5 flex-1 flex flex-col relative overflow-hidden">
+                <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-widest mb-4 z-10 relative">Intelligence Console</h2>
+                <div id="chat-feed" class="flex-1 overflow-y-auto pr-4 space-y-6 mb-4 relative z-10">
+                    <div class="flex gap-4">
+                        <div class="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0">KR</div>
+                        <div class="bg-gray-800/80 border border-gray-700 rounded-2xl rounded-tl-sm p-4 text-sm">Welcome to KatRAG Diagnostics. Configure JWT to begin.</div>
+                    </div>
+                </div>
+                <div class="relative z-10 bg-gray-900 rounded-xl border border-gray-700 p-2">
+                    <form onsubmit="handleChat(event)" class="flex gap-2">
+                        <input type="text" id="chat-input" placeholder="Query the semantic vector space..." class="flex-1 bg-transparent border-none text-sm text-white px-3 outline-none">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-4 py-2">Send</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        let ws = null, jwt = '', baseUrl = '', groupId - '';
+
+        function addLog(msg, isSuccess = true) {
+            const logBox = document.getElementById("ws-event-log");
+            const div = document.createElement("div");
+            div.className = (isSuccess ? "next-green-400" : "text-red-400") + " break-all";
+            div.innerText = "[" + new Date().toISOString().substring(11,19) + "] " + msg;
+            logBox.appendChild(div);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function connectSystem() {
+            baseUrl = document.getElementById("cfg-url").value.replace(/\/$/, "");
+            jwt = document.getElementById("cfg-jwt").value;
+            groupId = document.getElementById("cfg-group").value;
+            if(!jwt) return alert("Missing JWT");
+            
+            if(ws) ws.close();
+            const wsProtocol = baseUrl.startsWith("https") ? "wss" : "ws";
+            const host = baseUrl.replace(/^https?:\/\//, "");
+            ws = new WebSocket(wsProtocol + ":*/" + host + "/ws?token=" + jwt);
+            
+            ws.onopen = () => {
+                document.getElementById("ws-status-text").innerText = "WS: Connected";
+                document.getElementById("ws-status-text").className = "text-green-400";
+                document.getElementById("ws-dot").className = "relative inline-flex rounded-full h-2 w-2 bg-green-500";
+                addLog("WebSocket multiplex channel established.", true);
+            };
+            ws.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    addLog(data.event === "doc.indexed" ? "SUCCESS: Indexed " + data.document_id : "EVENT: " + e.data, data.event !== "doc.error");
+                } catch(err) { addLog("RAW: " + e.data, true); }
+            };
+            ws.onclose = () => {
+                document.getElementById("ws-status-text").innerText = "WS: Disconnected";
+                document.getElementById("ws-status-text").className = "text-gray-400";
+                document.getElementById("ws-dot").className = "relative inline-flex rounded-full h-2 w,‰œµÉ•´ÔÀÀˆì(€€€€€€€€€€€ôì(€€€€€€€ô((€€€€€€€…Íå¹Œ™Õ¹Ñ¥½¸¡…¹‘±•UÁ±½…¡”¤ì(€€€€€€€€€€€”¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€½¹ÍÐ™¥±”€ô‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ‰™¥±”µÕÁ±½…ˆ¤¹™¥±•ÍlÁtì(€€€€€€€€€€€¥˜ …™¥±”ñð€…‰…Í•UÉ°ñð€…©ÝÐ¤É•ÑÕÉ¸…±•ÉÐ ‰¡•¬™¥±”…¹½¹™¥ÕÉ…Ñ¥½¸ˆ¤ì(€€€€€€€€€€€€(€€€€€€€€€€€½¹ÍÐ™€ô¹•Ü½Éµ…Ñ„ ¤ì™¹…ÁÁ•¹ ‰™¥±”ˆ°™¥±”¤ì(€€€€€€€€€€€ÑÉäì(€€€€€€€€€€€€€€€½¹ÍÐÉ•Ì€ô…Ý…¥Ð™•Ñ ¡‰…Í•UÉ°€¬€ˆ½É½ÕÁÌ¼ˆ€¬É½ÕÁ%€¬€ˆ½‘½Õµ•¹ÑÌˆ°ì(€€€€€€€€€€€€€€€€€€€µ•Ñ¡½è€‰A=MPˆ°¡•…‘•ÉÌèì€‰ÕÑ¡½É¥é…Ñ¥½¸ˆè€‰	•…É•È€ˆ€¬©ÝÐô°‰½‘äè™(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€½¹ÍÐ‘…Ñ„€ô…Ý…¥ÐÉ•Ì¹©Í½¸ ¤ì(€€€€€€€€€€€€€€€…‘‘1½œ¡É•Ì¹½¬€ü€‰A$UÁ±½…‘•¸Ý…¥Ñ¥¹œ-…™­„¸¸¸ˆ€è€‰UÁ±½……¥±•è€ˆ€¬)M=8¹ÍÑÉ¥¹¥™ä¡‘…Ñ„¤°É•Ì¹½¬¤ì(€€€€€€€€€€€ô…Ñ ¡•ÉÈ¤ì…‘‘1½œ ‰9•ÑÝ½É¬ÉÉ½Èˆ°™…±Í”¤ìô(€€€€€€€ô((€€€€€€€…Íå¹Œ™Õ¹Ñ¥½¸¡…¹‘±•¡…Ð¡”¤ì(€€€€€€€€€€€”¹ÁÉ•Ù•¹Ñ•™…Õ±Ð ¤ì(€€€€€€€€€€€½¹ÍÐÄ€ô‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ‰¡…Ðµ¥¹ÁÕÐˆ¤¹Ù…±Õ”¹ÑÉ¥´ ¤ì(€€€€€€€€€€€¥˜ …Äñð€…‰…Í•UÉ°ñð€…©ÝÐ¤É•ÑÕÉ¸ì(€€€€€€€€€€€‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ‰¡…Ðµ¥¹ÁÕÐˆ¤¹Ù…±Õ”€ô€ˆˆì(€€€€€€€€€€€€(€€€€€€€€€€€½¹ÍÐ™••€ô‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% ‰¡…Ðµ™••ˆ¤ì(€€€€€€€€€€€™••¹¥¹¹•É!Q50€¬ô€ñ‘¥Ø±…ÍÌô‰™±•à…À´Ð™±•àµÉ½ÜµÉ•Ù•ÉÍ”ˆø(€€€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰Ü´à ´àÉ½Õ¹‘•‰œµÉ…ä´ÜÀÀ™±•à¥Ñ•µÌµ•¹Ñ•È©ÕÍÑ¥™äµ•¹Ñ•ÈÑ•áÐµÉ…ä´ÌÀÀ™½¹Ðµ‰½±Í¡É¥¹¬´ÀˆùTð½‘¥Øø(€€€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰‰œµ‰±Õ”´ØÀÀÑ•áÐµÝ¡¥Ñ”É½Õ¹‘•´Éá°É½Õ¹‘•µÑÈµÍ´À´ÐÑ•áÐµÍ´ˆø‘íÅôð½‘¥Øø(€€€€€€€€€€€€ð½‘¥Øù€ì(€€€€€€€€€€€€(€€€€€€€€€€€ÑÉäì(€€€€€€€€€€€€€€€½¹ÍÐÉ•Ì€ô…Ý…¥Ð™•Ñ ¡‰…Í•UÉ°€¬€ˆ½É½ÕÁÌ¼ˆ€¬É½ÕÁ%€¬€ˆ½¡…Ðˆ°ì(€€€€€€€€€€€€€€€€€€€µ•Ñ¡½è€‰A=MPˆ°¡•…‘•ÉÌèì€‰ÕÑ¡½É¥é…Ñ¥½¸ˆè€‰	•…É•È€ˆ€¬©ÝÐ°€‰½¹Ñ•¹ÐµQåÁ”ˆè€‰…ÁÁ±¥…Ñ¥½¸½©Í½¸ˆô°(€€€€€€€€€€€€€€€€€€€‰½‘äè)M=8¹ÍÑÉ¥¹¥™ä¡ìÅÕ•ÍÑ¥½¸èÄ°Ñ½Á}¬è€Ôô¤(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€½¹ÍÐ‘…Ñ„€ô…Ý…¥ÐÉ•Ì¹©Í½¸ ¤ì(€€€€€€€€€€€€€€€€(€€€€€€€€€€€€€€€±•Ðµ•Ñ…!Ñµ°€ô€œœì(€€€€€€€€€€€€€€€¥˜¡‘…Ñ„¹…Ñ•}‘•¥Í¥½¸¤µ•Ñ…!Ñµ°€¬ô€ñÍÁ…¸±…ÍÌô‰Áà´ÈÁä´À¸ÔÉ½Õ¹‘•Ñ•áÐµlÄÁÁát™½¹Ðµµ½¹¼‰½É‘•È‰½É‘•ÈµÉ••¸´ÔÀÀ¼ÌÀÑ•áÐµÉ••¸´ÐÀÀˆùQè€‘í‘…Ñ„¹…Ñ•}‘•¥Í¥½¹ôð½ÍÁ…¸ù€ì(€€€€€€€€€€€€€€€¥˜¡‘…Ñ„¹É½Õ¹‘¥¹}Í½É”¤µ•Ñ…!Ñµ°€¬ô€ñÍÁ…¸±…ÍÌô‰Áà´ÈÁä´À¸ÔÉ½Õ¹‘•Ñ•áÐµlÄÁÁát™½¹Ðµµ½¹¼‰½É‘•È‰½É‘•ÈµÉ…ä´ØÀÀÑ•áÐµÉ…ä´ÐÀÀˆù91$è€‘í‘…Ñ„¹É½Õ¹‘¥¹}Í½É”¹Ñ½¥á• Ì¥ôð½ÍÁ…¸ù€ì(€€€€€€€€€€€€€€€€(€€€€€€€€€€€€€€€™••¹¥¹¹•É!Q50€¬ô€ñ‘¥Ø±…ÍÌô‰™±•à…À´Ðˆø(€€€€€€€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰Ü´à ´àÉ½Õ¹‘•‰œµÉ…‘¥•¹ÐµÑ¼µ‰È™É½´µ‰±Õ”´ÔÀÀÑ¼µ¥¹‘¥¼´ØÀÀ™±•à¥Ñ•µÌµ•¹Ñ•È©ÕÍÑ¥™äµ•¹Ñ•ÈÑ•áÐµÝ¡¥Ñ”™½¹Ðµ‰½±Í¡É¥¹¬´Àˆù-Hð½‘¥Øø(€€€€€€€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰™±•à´Äµ…àµÜµlàÔ•tˆø(€€€€€€€€€€€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰‰œµÉ…ä´àÀÀ¼àÀ‰½É‘•È‰½É‘•ÈµÉ…ä´ÜÀÀÉ½Õ¹‘•´Éá°É½Õ¹‘•µÑ°µÍ´À´ÐÑ•áÐµÍ´Ñ•áÐµÉ…ä´ÈÀÀˆø‘í‘…Ñ„¹…¹ÍÝ•Èñð€‰AÉ½•ÍÍ•¸‰ôð½‘¥Øø(€€€€€€€€€€€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰µÐ´È™±•à…À´Èˆø‘íµ•Ñ…!Ñµ±ôð½‘¥Øø(€€€€€€€€€€€€€€€€€€€€ð½‘¥Øø(€€€€€€€€€€€€€€€€ð½‘¥Øù€ì(€€€€€€€€€€€€€€€™••¹ÍÉ½±±Q½À€ô™••¹ÍÉ½±±!•¥¡Ðì(€€€€€€€€€€€ô…Ñ ¡•ÉÈ¤ì…±•ÉÐ ‰ÉÉ½Èè€ˆ€¬•ÉÈ¤ìô(€€€€€€€ô(€€€€ð½ÍÉ¥ÁÐø(ð½‰½‘äø(ð½¡Ñµ°ø(
