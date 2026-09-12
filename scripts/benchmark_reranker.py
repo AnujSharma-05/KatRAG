@@ -13,7 +13,7 @@ from core_backend.src.retrieval.reranker import rerank_hits
 def run_benchmark():
     dataset = load_golden_set('tests/evals/golden_set.yaml')
     
-    top_k_candidates = [10, 25, 50]
+    top_k_candidates = [15]
     results = []
     
     print('Running Cross-Encoder Benchmark Sweep...')

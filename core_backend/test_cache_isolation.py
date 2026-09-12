@@ -3,7 +3,7 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from src.cache import query_cache, cosine_similarity
+from src.cache import query_cache, cosine_similarity, redis_client
 
 def test_cache_isolation():
     print("============================================================")
@@ -26,8 +26,7 @@ def test_cache_isolation():
     as_of = None
 
     # Clean start
-    query_cache.exact_store.clear()
-    query_cache.semantic_store.clear()
+    redis_client.flushdb()
 
     # Seed cache for Org A
     query_cache.set(org_a, group_a, q1, emb1, payload, as_of)
