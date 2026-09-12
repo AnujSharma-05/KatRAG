@@ -2,10 +2,8 @@
 kind: Deployment
 metadata:
   name: katrag-go-gateway
-  labels:
-    app: katrag-go-gateway
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: katrag-go-gateway
@@ -15,8 +13,8 @@ spec:
         app: katrag-go-gateway
     spec:
       containers:
-      - name: go-gateway
-        image: katrag-go-gateway:latest
+      - name: gateway
+        image: katrag/go-gateway:v1
         ports:
         - containerPort: 8080
         resources:
@@ -29,21 +27,13 @@ spec:
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 10
-        envFrom:
-        - configMapRef:
-            name: katrag-config
-        - secretRef:
-            name: katrag-secrets
-
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: katrag-core-api
-  labels:
-    app: katrag-core-api
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: katrag-core-api
@@ -54,7 +44,7 @@ spec:
     spec:
       containers:
       - name: core-api
-        image: katrag-core-api:latest
+        image: katrag/core-api:v1
         ports:
         - containerPort: 8000
         resources:
@@ -79,8 +69,3 @@ spec:
             port: 8000
           initialDelaySeconds: 15
           periodSeconds: 20
-        envFrom:
-        - configMapRef:
-            name: katrag-config
-        - secretRef:
-            name: katrag-secrets

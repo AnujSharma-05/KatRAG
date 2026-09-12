@@ -2,8 +2,6 @@
 kind: Deployment
 metadata:
   name: katrag-python-worker
-  labels:
-    app: katrag-python-worker
 spec:
   selector:
     matchLabels:
@@ -14,24 +12,18 @@ spec:
         app: katrag-python-worker
     spec:
       containers:
-      - name: python-worker
-        image: katrag-core-api:latest
-        command: ["python", "-m", "src.worker"]
+      - name: worker
+        image: katrag/python-worker:v1
+        command: ["python", "src/worker.py"]
         resources:
           requests:
-            cpu: "500m"
-            memory: "2Gi"
-        envFrom:
-        - configMapRef:
-            name: katrag-config
-        - secretRef:
-            name: katrag-secrets
-
+            cpu: "1000m"
+            memory: "4Gi"
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: katrag-worker-scaler
+  name: katrag-python-worker-scaler
 spec:
   scaleTargetRef:
     name: katrag-python-worker
@@ -40,7 +32,7 @@ spec:
   triggers:
   - type: kafka
     metadata:
-      topic: doc.uploaded
-      bootstrapServers: redpanda:9092
+      bootstrapServers: katrag-redpanda:9092
       consumerGroup: katrag-ingestion-group
+      topic: doc.uploaded
       lagThreshold: "10"
