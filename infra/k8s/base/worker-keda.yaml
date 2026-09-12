@@ -1,0 +1,38 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: katrag-python-worker
+spec:
+  selector:
+    matchLabels:
+      app: katrag-python-worker
+  template:
+    metadata:
+      labels:
+        app: katrag-python-worker
+    spec:
+      containers:
+      - name: worker
+        image: katrag/python-worker:v1
+        command: ["python", "src/worker.py"]
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "4Gi"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: katrag-python-worker-scaler
+spec:
+  scaleTargetRef:
+    name: katrag-python-worker
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: katrag-redpanda:9092
+      consumerGroup: katrag-ingestion-group
+      topic: doc.uploaded
+      lagThreshold: "10"
