@@ -141,6 +141,8 @@ async def answer_question(question: str, document_id: int | None = None, categor
         return {"answer": "The provided documents do not contain sufficient information.", "citations": [], "gate_decision": "REFUSE"}
 
     # Rerank
+    # Issue 13: Bound cross-encoder candidate funnel to top 15 chunks
+    hits = hits[:15]
     with _tracer.start_as_current_span("retrieval.rerank"):
         hits = rerank_hits(question, hits, top_k)
 
