@@ -1,5 +1,9 @@
 import time
 import uuid
+
+from opentelemetry import trace as otel_trace
+from opentelemetry.propagate import extract as otel_extract
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from typing import Any
 from sqlalchemy.orm import Session
 from .. import models
@@ -19,14 +23,31 @@ from ..generation.synthesizer import synthesize_answer
 # Since services.py will be a shim, we can import _embed_query from services.
 from ..services import _embed_query
 
-async def answer_question(question: str, document_id: int | None = None, category: str | None = None, top_k: int = 5, bypass_llm: bool = False, organization_id: str = "org_default", group_ids: list[int] | None = None, as_of: str | None = None) -> dict[str, Any]:
+async def answer_question(question: str, document_id: int | None = None, category: str | None = None, top_k: int = 5, bypass_llm: bool = False, organization_id: str = "org_default", group_ids: list[int] | None = None, as_of: str | None = None, traceparent_headers: dict | None = None) -> dict[str, Any]:
     start_time = time.time()
     routed_categories = []
+
+    # ── Issue 11: Extract incoming W3C trace context from the Go Gateway ──────
+    from ..telemetry import get_tracer
+    _tracer = get_tracer("katrag.query_service")
+    _parent_ctx = otel_extract(traceparent_headers or {})
+    _root_span_cm = _tracer.start_as_current_span(
+        "query_service.process_query",
+        context=_parent_ctx,
+    )
+    _root_span_cm.__enter__()
+    _root_span = otel_trace.get_current_span()
+    _root_span.set_attribute("tenant.organization_id", organization_id)
+    _root_span.set_attribute("tenant.group_ids", str(group_ids))
+    # ─────────────────────────────────────────────────────────────────────────
+
     query_vector = _embed_query(question)
     
     # Scope/Cache Check
     group_id = group_ids[0] if group_ids and len(group_ids) > 0 else None
-    cached_payload = query_cache.get(
+    # cache.lookup span
+    with _tracer.start_as_current_span("cache.lookup"):
+        cached_payload = query_cache.get(
         org_id=organization_id,
         group_id=str(group_id) if group_id else "default_group",
         query=question,
@@ -34,6 +55,7 @@ async def answer_question(question: str, document_id: int | None = None, categor
         as_of=as_of
     )
     if cached_payload:
+        _root_span_cm.__exit__(None, None, None)
         return cached_payload
 
     db: Session = sessionLocal()
@@ -46,6 +68,9 @@ async def answer_question(question: str, document_id: int | None = None, categor
             return {"answer": "No documents are available in the system.", "citations": [], "gate_decision": "REFUSE"}
         
         hits = []
+
+        with _tracer.start_as_current_span("retrieval.route"):
+            pass  # routing decision logged below
 
         if document_id is not None:
             doc = db.query(models.Document).filter(models.Document.id == document_id).first()
@@ -116,7 +141,8 @@ async def answer_question(question: str, document_id: int | None = None, categor
         return {"answer": "The provided documents do not contain sufficient information.", "citations": [], "gate_decision": "REFUSE"}
 
     # Rerank
-    hits = rerank_hits(question, hits, top_k)
+    with _tracer.start_as_current_span("retrieval.rerank"):
+        hits = rerank_hits(question, hits, top_k)
 
     # Issue 08: Soft Routing Telemetry — detect if top chunk came from global fallback
     global_fallback_triggered = False  # default for direct doc/category searches
@@ -124,7 +150,10 @@ async def answer_question(question: str, document_id: int | None = None, categor
         global_fallback_triggered = True
 
     # Gate
-    gate_decision = evaluate_confidence(hits)
+    with _tracer.start_as_current_span("retrieval.confidence_gate") as _gate_span:
+        gate_decision = evaluate_confidence(hits)
+        _gate_span.set_attribute("gate.decision", gate_decision)
+        _gate_span.set_attribute("router.global_fallback_triggered", global_fallback_triggered)
 
     if gate_decision == "REFUSE":
         return {
@@ -141,10 +170,13 @@ async def answer_question(question: str, document_id: int | None = None, categor
         db.close()
 
     # Synthesize
-    answer = await synthesize_answer(question, hits, citations, gate_decision, bypass_llm)
+    with _tracer.start_as_current_span("generation.synthesize"):
+        answer = await synthesize_answer(question, hits, citations, gate_decision, bypass_llm)
         
     # NLI Grounding
-    grounding_score = verify_grounding(answer, [hit["content"] for hit in hits])
+    with _tracer.start_as_current_span("verification.nli_grounding") as _nli_span:
+        grounding_score = verify_grounding(answer, [hit["content"] for hit in hits])
+        _nli_span.set_attribute("nli.grounding_score", float(grounding_score or 0.0))
 
     payload = {
         "answer": answer,
@@ -191,5 +223,13 @@ async def answer_question(question: str, document_id: int | None = None, categor
     finally:
         if 'db_trace' in locals():
             db_trace.close()
+
+    # Close root span with summary attributes
+    _root_span.set_attribute("gate.decision", gate_decision)
+    _root_span.set_attribute("router.global_fallback_triggered", global_fallback_triggered)
+    _root_span.set_attribute("nli.grounding_score", float(grounding_score or 0.0))
+    _root_span.set_attribute("citations.count", len(citations))
+    _root_span.set_attribute("latency_ms", int((time.time() - start_time) * 1000))
+    _root_span_cm.__exit__(None, None, None)
 
     return payload

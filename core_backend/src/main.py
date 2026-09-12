@@ -116,15 +116,30 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/chat", response_model=schemas.ChatResponse)
-async def chat(payload: schemas.ChatRequest, x_scope_organization_id: str = Header("org_default"), x_scope_group_ids: str = Header("")):
+async def chat(
+    payload: schemas.ChatRequest,
+    x_scope_organization_id: str = Header("org_default"),
+    x_scope_group_ids: str = Header(""),
+    traceparent: str = Header(None),  # W3C trace context injected by Go Gateway
+    tracestate: str = Header(None),
+):
     try:
-        return await services.answer_question(
+        # Build a carrier dict for OTel context extraction (Issue 11)
+        _trace_headers = {}
+        if traceparent:
+            _trace_headers["traceparent"] = traceparent
+        if tracestate:
+            _trace_headers["tracestate"] = tracestate
+
+        from .application.query_service import answer_question as _aq
+        return await _aq(
             question=payload.question,
             document_id=payload.document_id,
             category=payload.category,
             top_k=payload.top_k,
             bypass_llm=payload.bypass_llm,
             organization_id=x_scope_organization_id,
+            traceparent_headers=_trace_headers,
         )
     except Exception as exc:
         import traceback
