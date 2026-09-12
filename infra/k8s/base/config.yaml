@@ -1,0 +1,16 @@
+﻿apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: katrag-config
+data:
+  KAFKA_BROKER_URL: "katrag-redpanda:9092"
+  MILVUS_URI: "http://katrag-milvus:19530"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: katrag-secrets
+type: Opaque
+stringData:
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "secret_password"
