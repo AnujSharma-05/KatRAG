@@ -114,11 +114,14 @@ services:
       - MILVUS_COLLECTION=document_chunks
       - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
       - EMBEDDING_DIM=384
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=katrag-core-engine
     depends_on:
       - db
       - milvus-standalone
       - redpanda
       - minio
+      - jaeger
 
   # 7. Go API Gateway
   api-gateway:
@@ -134,11 +137,32 @@ services:
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin123
       - DATABASE_URL=postgres://task0_user:task0_password@db:5432/JPL_task0_RapidFoundation?sslmode=disable
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - OTEL_SERVICE_NAME=katrag-api-gateway
     depends_on:
       - redpanda
       - minio
       - db
       - core-api
+      - jaeger
+
+  # 8. Jaeger All-in-One — Distributed Tracing Backend
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: katrag-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC receiver
+      - "4318:4318"     # OTLP HTTP receiver
+    networks:
+      - katrag-network
+
+
+networks:
+  katrag-network:
+    driver: bridge
 
 volumes:
   postgres_data:

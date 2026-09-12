@@ -1,0 +1,203 @@
+- id: q-001
+  query: "What is the capital of France?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "Paris"
+  tags: ["semantic"]
+- id: q-002
+  query: "Find document DOC-789."
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "This is DOC-789."
+  tags: ["exact_id"]
+- id: q-003
+  query: "What was the policy in 2022?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  as_of: "2022-01-01T00:00:00Z"
+  gold_answer: "The policy in 2022 was X."
+  tags: ["temporal"]
+- id: q-004
+  query: "What is the secret code of the universe?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: false
+  gold_answer: ""
+  tags: ["unanswerable", "adversarial"]
+- id: q-001
+  query: "What is the capital of France?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "Paris"
+  tags: ["semantic"]
+- id: q-002
+  query: "Find document DOC-789."
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "This is DOC-789."
+  tags: ["exact_id"]
+- id: q-003
+  query: "What was the policy in 2022?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  as_of: "2022-01-01T00:00:00Z"
+  gold_answer: "The policy in 2022 was X."
+  tags: ["temporal"]
+- id: q-004
+  query: "What is the secret code of the universe?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: false
+  gold_answer: ""
+  tags: ["unanswerable", "adversarial"]
+- id: q-001
+  query: "What is the capital of France?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "Paris"
+  tags: ["semantic"]
+- id: q-002
+  query: "Find document DOC-789."
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "This is DOC-789."
+  tags: ["exact_id"]
+- id: q-003
+  query: "What was the policy in 2022?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  as_of: "2022-01-01T00:00:00Z"
+  gold_answer: "The policy in 2022 was X."
+  tags: ["temporal"]
+- id: q-004
+  query: "What is the secret code of the universe?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: false
+  gold_answer: ""
+  tags: ["unanswerable", "adversarial"]
+- id: q-001
+  query: "What is the capital of France?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "Paris"
+  tags: ["semantic"]
+- id: q-002
+  query: "Find document DOC-789."
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "This is DOC-789."
+  tags: ["exact_id"]
+- id: q-003
+  query: "What was the policy in 2022?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  as_of: "2022-01-01T00:00:00Z"
+  gold_answer: "The policy in 2022 was X."
+  tags: ["temporal"]
+- id: q-004
+  query: "What is the secret code of the universe?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: false
+  gold_answer: ""
+  tags: ["unanswerable", "adversarial"]
+- id: q-001
+  query: "What is the capital of France?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "Paris"
+  tags: ["semantic"]
+- id: q-002
+  query: "Find document DOC-789."
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "This is DOC-789."
+  tags: ["exact_id"]
+- id: q-003
+  query: "What was the policy in 2022?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  as_of: "2022-01-01T00:00:00Z"
+  gold_answer: "The policy in 2022 was X."
+  tags: ["temporal"]
+- id: q-004
+  query: "What is the secret code of the universe?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: false
+  gold_answer: ""
+  tags: ["unanswerable", "adversarial"]
+- id: q-001
+  query: "What is the capital of France?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "Paris"
+  tags: ["semantic"]
+- id: q-002
+  query: "Find document DOC-789."
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "This is DOC-789."
+  tags: ["exact_id"]
+- id: q-003
+  query: "What was the policy in 2022?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  as_of: "2022-01-01T00:00:00Z"
+  gold_answer: "The policy in 2022 was X."
+  tags: ["temporal"]
+- id: q-004
+  query: "What is the secret code of the universe?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: false
+  gold_answer: ""
+  tags: ["unanswerable", "adversarial"]
+- id: q-001
+  query: "What is the capital of France?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "Paris"
+  tags: ["semantic"]
+- id: q-002
+  query: "Find document DOC-789."
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  gold_answer: "This is DOC-789."
+  tags: ["exact_id"]
+- id: q-003
+  query: "What was the policy in 2022?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: true
+  as_of: "2022-01-01T00:00:00Z"
+  gold_answer: "The policy in 2022 was X."
+  tags: ["temporal"]
+- id: q-004
+  query: "What is the secret code of the universe?"
+  organization_id: "org_default"
+  permitted_group_ids: ["group_1"]
+  answerable: false
+  gold_answer: ""
+  tags: ["unanswerable", "adversarial"]

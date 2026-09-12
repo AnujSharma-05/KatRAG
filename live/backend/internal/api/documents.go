@@ -61,19 +61,26 @@ func UploadDocument(c *fiber.Ctx) error {
 	}
 	defer src.Close()
 
+	tx, err := storage.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
+		return c.Status(500).JSON(fiber.Map{"error": "Database transaction failed"})
+	}
+	defer tx.Rollback()
+
 	// 1. Supersession Logic
 	var docID int
 	var currentVersionNum int
 	isSuperseding := false
 
-	err = storage.DB.QueryRow(
+	err = tx.QueryRowContext(c.Context(),
 		"SELECT id FROM documents WHERE filename = $1 AND group_id = $2 AND organization_id = $3",
 		file.Filename, groupID, scope.OrganizationID,
 	).Scan(&docID)
 
 	if err == sql.ErrNoRows {
 		// New document
-		err = storage.DB.QueryRow(
+		err = tx.QueryRowContext(c.Context(),
 			"INSERT INTO documents (filename, file_size, status, organization_id, group_id, created_at) VALUES ($1, $2, 'pending', $3, $4, CURRENT_TIMESTAMP) RETURNING id",
 			file.Filename, file.Size, scope.OrganizationID, groupID,
 		).Scan(&docID)
@@ -88,7 +95,7 @@ func UploadDocument(c *fiber.Ctx) error {
 	} else {
 		// Superseding an existing document
 		isSuperseding = true
-		err = storage.DB.QueryRow(
+		err = tx.QueryRowContext(c.Context(),
 			"SELECT COALESCE(MAX(version_num), 0) FROM document_versions WHERE document_id = $1", docID,
 		).Scan(&currentVersionNum)
 		if err != nil {
@@ -97,7 +104,7 @@ func UploadDocument(c *fiber.Ctx) error {
 		}
 
 		// Deprecate old versions
-		_, err = storage.DB.Exec(
+		_, err = tx.ExecContext(c.Context(),
 			"UPDATE document_versions SET is_current = false, valid_to = CURRENT_TIMESTAMP WHERE document_id = $1 AND is_current = true", docID,
 		)
 		if err != nil {
@@ -106,7 +113,7 @@ func UploadDocument(c *fiber.Ctx) error {
 		}
 
 		// Update parent doc status
-		_, err = storage.DB.Exec(
+		_, err = tx.ExecContext(c.Context(),
 			"UPDATE documents SET status = 'pending', file_size = $1 WHERE id = $2", file.Size, docID,
 		)
 		currentVersionNum++
@@ -114,11 +121,15 @@ func UploadDocument(c *fiber.Ctx) error {
 
 	// Insert new version
 	versionID := "ver_" + strings.Replace(uuid.New().String(), "-", "", -1)[:12]
-	_, err = storage.DB.Exec(
+	_, err = tx.ExecContext(c.Context(),
 		"INSERT INTO document_versions (id, document_id, version_num, is_current, valid_from, status) VALUES ($1, $2, $3, true, CURRENT_TIMESTAMP, 'pending')",
 		versionID, docID, currentVersionNum,
 	)
 	if err != nil {
+		if strings.Contains(err.Error(), "23P01") {
+			log.Printf("DB insert version conflict: %v", err)
+			return c.Status(409).JSON(fiber.Map{"error": "Concurrent version update detected. Please retry."})
+		}
 		log.Printf("DB insert version error: %v", err)
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create document version record"})
 	}
@@ -136,20 +147,20 @@ func UploadDocument(c *fiber.Ctx) error {
 	// 3. Publish Events
 	topicUpload := "doc.uploaded"
 	payloadUpload := map[string]interface{}{
-		"document_id":        docID,
+		"document_id":         docID,
 		"document_version_id": versionID,
-		"group_id":           groupID,
-		"organization_id":    scope.OrganizationID,
-		"object_name":        objectName,
-		"version_num":        currentVersionNum,
+		"group_id":            groupID,
+		"organization_id":     scope.OrganizationID,
+		"object_name":         objectName,
+		"version_num":         currentVersionNum,
 	}
 	payloadBytes, _ := json.Marshal(payloadUpload)
 
-	err = events.Producer.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topicUpload, Partition: kafka.PartitionAny},
-		Key:            []byte(scope.OrganizationID),
-		Value:          payloadBytes,
-	}, nil)
+	_, err = tx.ExecContext(c.Context(), "INSERT INTO outbox_events (event_type, payload) VALUES ($1, $2)", topicUpload, payloadBytes)
+	if err != nil {
+		log.Printf("DB insert outbox error: %v", err)
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to queue outbox event"})
+	}
 
 	if isSuperseding {
 		topicSuperseded := "doc.superseded"
@@ -160,11 +171,21 @@ func UploadDocument(c *fiber.Ctx) error {
 			"superseded_by":   versionID,
 		}
 		supersededBytes, _ := json.Marshal(payloadSuperseded)
-		events.Producer.Produce(&kafka.Message{
-			TopicPartition: kafka.TopicPartition{Topic: &topicSuperseded, Partition: kafka.PartitionAny},
-			Key:            []byte(scope.OrganizationID),
-			Value:          supersededBytes,
-		}, nil)
+		_, err = tx.ExecContext(c.Context(), "INSERT INTO outbox_events (event_type, payload) VALUES ($1, $2)", topicSuperseded, supersededBytes)
+		if err != nil {
+			log.Printf("DB insert superseded outbox error: %v", err)
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to queue superseded outbox event"})
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		if strings.Contains(err.Error(), "23P01") {
+			log.Printf("DB commit conflict: %v", err)
+			return c.Status(409).JSON(fiber.Map{"error": "Concurrent version update detected. Please retry."})
+		}
+		log.Printf("DB commit error: %v", err)
+		return c.Status(500).JSON(fiber.Map{"error": "Transaction commit failed"})
 	}
 
 	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
