@@ -71,6 +71,8 @@ class MilvusStore:
             schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=65535, enable_analyzer=True)
             schema.add_field(field_name="is_current", datatype=DataType.BOOL, default_value=True)
             schema.add_field(field_name="group_id", datatype=DataType.INT64, nullable=True)
+            schema.add_field(field_name="char_start", datatype=DataType.INT64, nullable=True)
+            schema.add_field(field_name="char_end", datatype=DataType.INT64, nullable=True)
             
             # Add sparse vector field for BM25
             schema.add_field(field_name="sparse_vector", datatype=DataType.SPARSE_FLOAT_VECTOR)
@@ -139,7 +141,7 @@ class MilvusStore:
         client.load_collection(collection_name=self.category_collection_name)
         print(f"ALL COLLECTIONS ENSURED & LOADED")
 
-    def upsert_chunks(self, document_id: int, chunks: list[str], embeddings: list[list[float]], organization_id: str = "org_default", group_id: int | None = None) -> list[int]:
+    def upsert_chunks(self, document_id: int, chunks: list[str], embeddings: list[list[float]], organization_id: str = "org_default", group_id: int | None = None, char_spans: list[dict] | None = None) -> list[int]:
         self.ensure_collection()
         client = self._get_client()
 
@@ -154,6 +156,8 @@ class MilvusStore:
                 "content": chunks[idx],
                 "is_current": True,
                 "group_id": group_id,
+                "char_start": (char_spans[idx]["char_start"] if char_spans and idx < len(char_spans) else 0),
+                "char_end":   (char_spans[idx]["char_end"]   if char_spans and idx < len(char_spans) else 0),
             }
             for idx in range(len(chunks))
         ]
@@ -225,7 +229,7 @@ class MilvusStore:
             reqs=[dense_req, sparse_req],
             ranker=RRFRanker(k=60),
             limit=top_k,
-            output_fields=["document_id", "chunk_index", "content", "organization_id", "is_current", "group_id"]
+            output_fields=["document_id", "chunk_index", "content", "organization_id", "is_current", "group_id", "char_start", "char_end"]
         )
 
         formatted: list[dict[str, Any]] = []
@@ -241,6 +245,8 @@ class MilvusStore:
                         "content": str(entity.get("content")),
                     "organization_id": str(entity.get("organization_id")),
                     "group_id": int(entity.get("group_id")) if entity.get("group_id") is not None else None,
+                    "char_start": int(entity.get("char_start", 0)),
+                    "char_end":   int(entity.get("char_end",   0)),
                     }
                 )
         return formatted

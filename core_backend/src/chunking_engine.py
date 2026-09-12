@@ -24,6 +24,7 @@ def extract_blocks_from_pdf(file_path: str) -> list[dict]:
     doc = fitz.open(file_path)
     blocks = []
     current_section = "Document Start"
+    cumulative_char_pos = 0  # absolute char offset across the full document
     
     for page_num, page in enumerate(doc):
         # 1. Extract tables first
@@ -34,12 +35,18 @@ def extract_blocks_from_pdf(file_path: str) -> list[dict]:
                 df = table.to_pandas()
                 markdown_table = df.to_markdown(index=False) if not df.empty else ""
                 if markdown_table:
+                    _table_text = f"Table Data:\n{markdown_table}"
+                    _t_start = cumulative_char_pos
+                    _t_end = _t_start + len(_table_text)
                     blocks.append({
-                        "text": f"Table Data:\n{markdown_table}",
+                        "text": _table_text,
                         "type": "table",
                         "page_from": page_num + 1,
-                        "section_path": current_section
+                        "section_path": current_section,
+                        "char_start": _t_start,
+                        "char_end": _t_end,
                     })
+                    cumulative_char_pos = _t_end + 1
                 table_bboxes.append(table.bbox)
                 
         # 2. Extract text blocks
@@ -69,14 +76,19 @@ def extract_blocks_from_pdf(file_path: str) -> list[dict]:
                 
                 # Update current section path if a heading is found
                 if is_heading and len(text) < 100:
-                    # Very simple tracking: just use the heading as the section
                     current_section = text
-                
+
+                _b_start = cumulative_char_pos
+                _b_end = _b_start + len(text)
+                cumulative_char_pos = _b_end + 2
+
                 blocks.append({
                     "text": text,
                     "type": "heading" if is_heading else "text",
                     "page_from": page_num + 1,
-                    "section_path": current_section
+                    "section_path": current_section,
+                    "char_start": _b_start,
+                    "char_end": _b_end,
                 })
                 
     return blocks
@@ -106,9 +118,12 @@ def chunk_structural_blocks(blocks: list[dict], bypass_llm: bool = True) -> list
     current_parent_text = ""
     current_parent_page = None
     current_parent_section = ""
+    current_parent_char_start = 0
+    current_parent_char_end = 0
     
     def flush_parent():
         nonlocal current_parent_text, current_parent_page, current_parent_section
+        nonlocal current_parent_char_start, current_parent_char_end
         if not current_parent_text.strip():
             return
             
@@ -120,50 +135,71 @@ def chunk_structural_blocks(blocks: list[dict], bypass_llm: bool = True) -> list
         window_size = int(child_budget / 1.3)
         overlap = int(overlap_budget / 1.3)
         
+        parent_text_stripped = current_parent_text.strip()
         if len(words) <= window_size:
-            child_texts.append(current_parent_text)
+            child_texts.append(parent_text_stripped)
         else:
             for i in range(0, len(words), window_size - overlap):
                 child_texts.append(" ".join(words[i:i + window_size]))
-                
+
+        child_spans = []
+        search_pos = 0
+        for ct in child_texts:
+            idx = parent_text_stripped.find(ct, search_pos)
+            if idx == -1:
+                idx = search_pos
+            child_spans.append({"char_start": current_parent_char_start + idx, "char_end": current_parent_char_start + idx + len(ct)})
+            search_pos = idx + max(1, len(ct) - 20)
+
         chunks.append({
             "is_parent": True,
-            "text": current_parent_text.strip(),
+            "text": parent_text_stripped,
             "page_from": current_parent_page,
             "section_path": current_parent_section,
-            "children": child_texts
+            "char_start": current_parent_char_start,
+            "char_end": current_parent_char_end,
+            "children": child_texts,
+            "child_spans": child_spans,
         })
-        
+
         current_parent_text = ""
         current_parent_page = None
         current_parent_section = ""
+        current_parent_char_start = 0
+        current_parent_char_end = 0
 
     for block in blocks:
+        b_char_start = block.get("char_start", 0)
+        b_char_end = block.get("char_end", 0)
+
         # Isolate tables
         if block["type"] == "table":
             flush_parent()
-            
-            # If bypass_llm is False in the future, we would call the LLM here to summarize the table
-            # For now, the table is its own parent and child
+            _t = block["text"]
             chunks.append({
                 "is_parent": True,
-                "text": block["text"],
+                "text": _t,
                 "page_from": block["page_from"],
                 "section_path": block["section_path"],
-                "children": [block["text"]]
+                "char_start": b_char_start,
+                "char_end": b_char_end,
+                "children": [_t],
+                "child_spans": [{"char_start": b_char_start, "char_end": b_char_end}],
             })
             continue
-            
+
         block_tokens = _count_tokens(block["text"])
-        
+
         if _count_tokens(current_parent_text) + block_tokens > parent_budget:
             flush_parent()
-            
+
         if not current_parent_text:
             current_parent_page = block["page_from"]
             current_parent_section = block["section_path"]
-            
+            current_parent_char_start = b_char_start
+
         current_parent_text += block["text"] + "\n\n"
+        current_parent_char_end = b_char_end
         
     flush_parent()
     return chunks

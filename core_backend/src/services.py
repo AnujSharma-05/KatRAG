@@ -432,23 +432,29 @@ async def process_document_task(doc_id: int, filename: str, bypass_llm: bool = F
                 c_prefix = p_chunk.get("child_contexts", [""] * len(p_chunk["children"]))[child_idx]
                 # We embed the prefix + the content
                 child_texts_to_embed.append(c_prefix + "\n" + child_text if c_prefix else child_text)
+                _cspan = p_chunk.get("child_spans", [])
+                _cs = _cspan[child_idx] if child_idx < len(_cspan) else {"char_start": 0, "char_end": 0}
                 child_refs.append({
                     "parent_id": parent_db.id,
                     "chunk_index": parent_idx * 1000 + child_idx + 1,
                     "page_from": p_chunk["page_from"],
                     "section_path": p_chunk["section_path"],
                     "text": child_text,
-                    "context_prefix": c_prefix
+                    "context_prefix": c_prefix,
+                    "char_start": _cs["char_start"],
+                    "char_end": _cs["char_end"],
                 })
 
         embeddings = _embed_texts(child_texts_to_embed)
         
         # Insert children into Milvus
+        _child_char_spans = [{"char_start": r["char_start"], "char_end": r["char_end"]} for r in child_refs]
         milvus_ids = milvus_store.upsert_chunks(
-            document_id=doc_id, 
-            chunks=child_texts_to_embed, 
+            document_id=doc_id,
+            chunks=child_texts_to_embed,
             embeddings=embeddings,
-            organization_id=doc.organization_id if doc.organization_id else "org_default"
+            organization_id=doc.organization_id if doc.organization_id else "org_default",
+            char_spans=_child_char_spans,
         )
         
         # Save children to DB with Milvus IDs and parent_chunk_id
@@ -461,7 +467,9 @@ async def process_document_task(doc_id: int, filename: str, bypass_llm: bool = F
                 milvus_id=str(milvus_ids[i]) if i < len(milvus_ids) else None,
                 parent_chunk_id=ref["parent_id"],
                 page_from=ref["page_from"],
-                section_path=ref["section_path"]
+                section_path=ref["section_path"],
+                char_start=ref.get("char_start", 0),
+                char_end=ref.get("char_end", 0),
             )
             db.add(child_db)
 
