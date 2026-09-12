@@ -1,7 +1,7 @@
 from sentence_transformers import CrossEncoder
 from ..config import CROSS_ENCODER_MODEL
 
-CROSS_ENCODER_INSTANCE = CrossEncoder(CROSS_ENCODER_MODEL)
+CROSS_ENCODER_INSTANCE = CrossEncoder(CROSS_ENCODER_MODEL, max_length=256)
 
 def rerank_hits(question: str, hits: list[dict], top_k: int) -> list[dict]:
     if not hits:
