@@ -80,8 +80,12 @@ async def answer_question(question: str, document_id: int | None = None, categor
                 routed_hits = []
                 if doc_ids:
                     routed_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=80, document_ids=doc_ids, organization_id=organization_id, group_ids=group_ids)
-                
+                for h in routed_hits:
+                    h["_routing_origin"] = "routed"
+
                 global_hits = milvus_store.search(query_text=question, query_embedding=query_vector, top_k=40, organization_id=organization_id, group_ids=group_ids)
+                for h in global_hits:
+                    h["_routing_origin"] = "global_fallback"
                 
                 hit_map = {}
                 for hit in global_hits:
@@ -113,7 +117,12 @@ async def answer_question(question: str, document_id: int | None = None, categor
 
     # Rerank
     hits = rerank_hits(question, hits, top_k)
-    
+
+    # Issue 08: Soft Routing Telemetry — detect if top chunk came from global fallback
+    global_fallback_triggered = False  # default for direct doc/category searches
+    if hits and hits[0].get("_routing_origin") == "global_fallback":
+        global_fallback_triggered = True
+
     # Gate
     gate_decision = evaluate_confidence(hits)
 
@@ -141,7 +150,11 @@ async def answer_question(question: str, document_id: int | None = None, categor
         "answer": answer,
         "citations": citations,
         "gate_decision": gate_decision,
-        "grounding_score": grounding_score
+        "grounding_score": grounding_score,
+        "telemetry": {
+            "global_fallback_triggered": global_fallback_triggered,
+            "routed_categories": routed_categories,
+        },
     }
     
     if gate_decision != "REFUSE":
@@ -168,7 +181,8 @@ async def answer_question(question: str, document_id: int | None = None, categor
             gate_decision=gate_decision,
             grounding_score=grounding_score,
             latency_ms=latency_ms,
-            retrieved_chunk_ids=retrieved_chunk_ids
+            retrieved_chunk_ids=retrieved_chunk_ids,
+            global_fallback_triggered=global_fallback_triggered,
         )
         db_trace.add(trace_record)
         db_trace.commit()
